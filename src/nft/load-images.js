@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { getNftImageUrlCandidates, getNftTokenId } from "./normalize.js";
+import { expandImageUrlCandidates, getNftImageUrlCandidates, getNftTokenId } from "./normalize.js";
 
 async function fetchImageBuffer(url, timeoutMs) {
   const res = await fetch(url, {
@@ -10,6 +10,18 @@ async function fetchImageBuffer(url, timeoutMs) {
     throw new Error(`Image fetch failed (${res.status})`);
   }
   return Buffer.from(await res.arrayBuffer());
+}
+
+function timeoutForUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("ipfs") || host === "dweb.link" || host.includes("pinata")) {
+      return 20_000;
+    }
+  } catch {
+    // ignore
+  }
+  return 12_000;
 }
 
 async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200) {
@@ -47,17 +59,16 @@ async function mapWithConcurrency(items, concurrency, fn) {
 }
 
 async function loadBestImageForNft(nft, displayName) {
-  const candidates = getNftImageUrlCandidates(nft);
-  if (!candidates.length) {
+  const urls = expandImageUrlCandidates(getNftImageUrlCandidates(nft));
+  if (!urls.length) {
     throw new Error(`No image URL for ${displayName}`);
   }
 
-  const urls = candidates.slice(0, 1);
-  for (const url of urls) {
+  for (const url of urls.slice(0, 8)) {
     try {
-      return await loadImageFromUrl(url, displayName, 8_000);
+      return await loadImageFromUrl(url, displayName, timeoutForUrl(url));
     } catch {
-      // try next
+      // try next candidate
     }
   }
 

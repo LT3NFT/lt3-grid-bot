@@ -12,7 +12,7 @@ export const MAX_DISCORD_LONG_EDGE = 4096;
 export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
-export const BOT_VERSION = "2026-06-22-v5";
+export const BOT_VERSION = "2026-06-22-v6";
 export const GRID_COOLDOWN_MS = (Number(process.env.GRID_COOLDOWN_SECONDS) || 30) * 1000;
 export const GRID_TIMEOUT_MS = 180_000;
 export const GIF_TIMEOUT_MS = 300_000;
@@ -36,8 +36,8 @@ export const GIF_FPS = 5;
 export const GIF_FRAME_SIZE = 512;
 export const IMAGE_FETCH_CONCURRENCY = 8;
 export function imageFetchConcurrencyForCount(count) {
-  if (count > 60) return 20;
-  if (count > 30) return 16;
+  if (count > 60) return 12;
+  if (count > 30) return 10;
   return IMAGE_FETCH_CONCURRENCY;
 }
 

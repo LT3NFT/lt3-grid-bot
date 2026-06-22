@@ -1,4 +1,35 @@
 const IPFS_HTTPS_GATEWAY = "https://ipfs.io/ipfs/";
+const IPFS_GATEWAYS = [
+  IPFS_HTTPS_GATEWAY,
+  "https://dweb.link/ipfs/",
+  "https://gateway.pinata.cloud/ipfs/",
+];
+
+export function expandImageUrlCandidates(urls) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of urls) {
+    const url = normalizeMediaUrl(raw);
+    if (!url) continue;
+
+    const push = (candidate) => {
+      if (!candidate || seen.has(candidate)) return;
+      seen.add(candidate);
+      out.push(candidate);
+    };
+
+    push(url);
+
+    const ipfsMatch = url.match(/\/ipfs\/(.+)$/i);
+    if (ipfsMatch) {
+      const path = ipfsMatch[1];
+      for (const gateway of IPFS_GATEWAYS) {
+        push(`${gateway}${path}`);
+      }
+    }
+  }
+  return out;
+}
 
 export function ipfsPathToHttpsGateway(path) {
   const cleaned = String(path || "")
