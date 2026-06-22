@@ -1,7 +1,8 @@
-import { assertBotConfig } from "./config.js";
+import { assertBotConfig, BOT_VERSION } from "./config.js";
 import { createBotClient, wireBot } from "./bot.js";
 
 assertBotConfig();
+console.log(`lt3-grid-bot ${BOT_VERSION}`);
 
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled rejection", err);

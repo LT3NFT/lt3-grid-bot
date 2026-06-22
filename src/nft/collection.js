@@ -21,7 +21,7 @@ export async function loadLt3Collection(rawInput) {
 
   const images = await loadNftImages(nfts, {
     concurrency: imageFetchConcurrencyForCount(nfts.length),
-    fast: nfts.length > 40,
+    fast: true,
   });
   return { address, display, count: images.length, images };
 }
