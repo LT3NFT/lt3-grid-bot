@@ -7,6 +7,15 @@ import {
   getNftTokenId,
 } from "./normalize.js";
 
+function isCdnUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.includes("alchemy.com") || host.includes("cloudinary.com");
+  } catch {
+    return false;
+  }
+}
+
 function rankImageUrls(urls) {
   function score(url) {
     try {
@@ -37,43 +46,50 @@ async function fetchImageBuffer(url, timeoutMs) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-function timeoutForUrl(url) {
+function urlsForAttempt(nft, options) {
+  const ranked = rankImageUrls(expandImageUrlCandidates(getNftImageUrlCandidates(nft)));
+  if (options.preferCdn) {
+    const cdn = ranked.filter(isCdnUrl);
+    if (cdn.length) return cdn;
+  }
+  return ranked;
+}
+
+function timeoutForUrl(url, preferCdn) {
   try {
     const host = new URL(url).hostname.toLowerCase();
     if (host.includes("ipfs") || host === "dweb.link" || host.includes("pinata")) {
-      return 20_000;
+      return preferCdn ? 10_000 : 20_000;
     }
   } catch {
     // ignore
   }
-  return 12_000;
+  return preferCdn ? 8_000 : 12_000;
 }
 
 async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200) {
   const buffer = await fetchImageBuffer(url, timeoutMs);
-  const resized = await sharp(buffer)
+  const { data, info } = await sharp(buffer)
     .resize(maxLongEdge, maxLongEdge, { fit: "inside", withoutEnlargement: true })
     .jpeg({ quality: 88 })
-    .toBuffer();
-  const meta = await sharp(resized).metadata();
-  const width = meta.width || 1;
-  const height = meta.height || 1;
+    .toBuffer({ resolveWithObject: true });
+
   return {
     name: displayName,
-    width,
-    height,
-    buffer: resized,
+    width: info.width || 1,
+    height: info.height || 1,
+    buffer: data,
   };
 }
 
-async function tryLoadFromUrl(url, displayName) {
-  const timeoutMs = timeoutForUrl(url);
+async function tryLoadFromUrl(url, displayName, maxLongEdge, preferCdn) {
+  const timeoutMs = timeoutForUrl(url, preferCdn);
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await loadImageFromUrl(url, displayName, timeoutMs);
+      return await loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge);
     } catch (err) {
       if (attempt === 1) throw err;
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      await new Promise((resolve) => setTimeout(resolve, preferCdn ? 100 : 400));
     }
   }
   throw new Error("Unreachable");
@@ -118,11 +134,12 @@ async function createPlaceholderImage(displayName) {
   };
 }
 
-async function tryUrlsForNft(nft, displayName) {
-  const urls = rankImageUrls(expandImageUrlCandidates(getNftImageUrlCandidates(nft)));
-  for (const url of urls.slice(0, 10)) {
+async function tryUrlsForNft(nft, displayName, options) {
+  const urls = urlsForAttempt(nft, options);
+  const maxAttempts = options.maxUrlAttempts ?? 10;
+  for (const url of urls.slice(0, maxAttempts)) {
     try {
-      return await tryLoadFromUrl(url, displayName);
+      return await tryLoadFromUrl(url, displayName, options.maxLongEdge ?? 1200, options.preferCdn);
     } catch {
       // try next candidate
     }
@@ -130,13 +147,17 @@ async function tryUrlsForNft(nft, displayName) {
   return null;
 }
 
-async function loadBestImageForNft(nft, displayName) {
-  let image = await tryUrlsForNft(nft, displayName);
+async function loadBestImageForNft(nft, displayName, options) {
+  let image = await tryUrlsForNft(nft, displayName, options);
   if (image) return image;
 
   const refreshed = await fetchNftMetadata(nft);
   if (refreshed) {
-    image = await tryUrlsForNft(refreshed, displayName);
+    image = await tryUrlsForNft(refreshed, displayName, {
+      ...options,
+      preferCdn: false,
+      maxUrlAttempts: 10,
+    });
     if (image) return image;
   }
 
@@ -162,11 +183,16 @@ async function mapWithConcurrency(items, concurrency, fn) {
 
 export async function loadNftImages(nfts, options = {}) {
   const concurrency = options.concurrency ?? 8;
+  const loadOptions = {
+    maxLongEdge: options.maxLongEdge ?? 1200,
+    maxUrlAttempts: options.maxUrlAttempts ?? 10,
+    preferCdn: options.preferCdn ?? false,
+  };
 
   return mapWithConcurrency(nfts, concurrency, async (nft) => {
     const tokenId = getNftTokenId(nft) ?? "?";
     const displayName = `LT3 #${tokenId}`;
-    return loadBestImageForNft(nft, displayName);
+    return loadBestImageForNft(nft, displayName, loadOptions);
   });
 }
 

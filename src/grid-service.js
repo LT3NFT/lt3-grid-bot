@@ -30,14 +30,14 @@ async function buildGridFromCollection(collection) {
 }
 
 export async function buildGridForWalletInput(rawInput) {
-  const collection = await loadLt3Collection(rawInput);
+  const collection = await loadLt3Collection(rawInput, { purpose: "grid" });
   return buildGridFromCollection(collection);
 }
 
 export async function buildGridForWalletInputWithTimeout(rawInput) {
   return withTimeout(
     (async () => {
-      const collection = await loadLt3Collection(rawInput);
+      const collection = await loadLt3Collection(rawInput, { purpose: "grid" });
       return buildGridFromCollection(collection);
     })(),
     gridTimeoutForCount(MAX_NFT_COUNT),

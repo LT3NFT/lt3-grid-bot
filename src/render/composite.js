@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { renderConcurrencyForCount } from "../config.js";
 import { mapWithConcurrency } from "../nft/load-images.js";
 import { MAX_DISCORD_FILE_BYTES } from "../layout/dimensions.js";
 
@@ -16,7 +17,7 @@ async function fitImageToCell(imageBuffer, cellW, cellH, fitMode) {
       background,
       kernel: sharp.kernel.lanczos3,
     })
-    .png()
+    .jpeg({ quality: 92, mozjpeg: true })
     .toBuffer();
 }
 
@@ -25,7 +26,7 @@ export async function renderLayoutToBuffer(layout, images, width, height) {
   const rects = layout.rects.slice().sort((a, b) => a.imageIndex - b.imageIndex);
   const w = Math.max(1, Math.round(width));
   const h = Math.max(1, Math.round(height));
-  const renderConcurrency = images.length > 60 ? 10 : images.length > 30 ? 8 : 6;
+  const renderConcurrency = renderConcurrencyForCount(images.length);
 
   const composites = await mapWithConcurrency(rects, renderConcurrency, async (rect) => {
     const image = images[rect.imageIndex];
@@ -57,7 +58,7 @@ export async function renderLayoutToBuffer(layout, images, width, height) {
 
   let pipeline = canvas.composite(composites.filter(Boolean));
 
-  let png = await pipeline.png({ compressionLevel: 6 }).toBuffer();
+  let png = await pipeline.png({ compressionLevel: 3 }).toBuffer();
   if (png.length <= MAX_DISCORD_FILE_BYTES) {
     return { buffer: png, extension: "png", mime: "image/png" };
   }

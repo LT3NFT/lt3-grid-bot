@@ -12,7 +12,7 @@ export const MAX_DISCORD_LONG_EDGE = 4096;
 export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
-export const BOT_VERSION = "2026-06-22-v9";
+export const BOT_VERSION = "2026-06-22-v10";
 export const GRID_COOLDOWN_MS = (Number(process.env.GRID_COOLDOWN_SECONDS) || 30) * 1000;
 export const GRID_TIMEOUT_MS = 180_000;
 export const GIF_TIMEOUT_MS = 300_000;
@@ -33,9 +33,20 @@ export const GIF_FPS = 5;
 export const GIF_FRAME_SIZE = 512;
 export const IMAGE_FETCH_CONCURRENCY = 8;
 export function imageFetchConcurrencyForCount(count) {
-  if (count > 60) return 8;
-  if (count > 30) return 8;
-  return IMAGE_FETCH_CONCURRENCY;
+  if (count <= 30) return 20;
+  if (count <= 60) return 12;
+  return 8;
+}
+export function gridDecodeLongEdgeForCount(count) {
+  if (count <= 30) return 768;
+  if (count <= 50) return 896;
+  if (count <= 70) return 1024;
+  return 1152;
+}
+export function renderConcurrencyForCount(count) {
+  if (count <= 30) return 16;
+  if (count <= 60) return 10;
+  return 8;
 }
 
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();

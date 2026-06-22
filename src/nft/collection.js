@@ -1,4 +1,5 @@
 import {
+  gridDecodeLongEdgeForCount,
   imageFetchConcurrencyForCount,
   MAX_NFT_COUNT,
 } from "../config.js";
@@ -6,7 +7,7 @@ import { fetchAllLt3NftsForOwner } from "./fetch.js";
 import { loadNftImages } from "./load-images.js";
 import { resolveWalletInput } from "../util/wallet-resolve.js";
 
-export async function loadLt3Collection(rawInput) {
+export async function loadLt3Collection(rawInput, options = {}) {
   const { address, display } = await resolveWalletInput(rawInput);
 
   const nfts = await fetchAllLt3NftsForOwner(address);
@@ -19,9 +20,12 @@ export async function loadLt3Collection(rawInput) {
     );
   }
 
+  const isGrid = options.purpose === "grid";
   const images = await loadNftImages(nfts, {
     concurrency: imageFetchConcurrencyForCount(nfts.length),
-    fast: true,
+    maxLongEdge: isGrid ? gridDecodeLongEdgeForCount(nfts.length) : 1200,
+    maxUrlAttempts: isGrid ? 4 : 10,
+    preferCdn: isGrid,
   });
   return { address, display, count: images.length, images };
 }
