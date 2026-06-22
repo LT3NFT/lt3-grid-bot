@@ -1,4 +1,4 @@
-import { gifTimeoutForCount } from "./config.js";
+import { gifTimeoutForCount, MAX_NFT_COUNT } from "./config.js";
 import { loadLt3Collection } from "./nft/collection.js";
 import { renderCollectionGif } from "./render/gif.js";
 import { withTimeout } from "./util/wallet-resolve.js";
@@ -16,15 +16,17 @@ async function buildGifFromCollection(collection) {
 }
 
 export async function buildGifForWalletInput(rawInput) {
-  return buildGifFromCollection(await loadLt3Collection(rawInput));
+  const collection = await loadLt3Collection(rawInput);
+  return buildGifFromCollection(collection);
 }
 
 export async function buildGifForWalletInputWithTimeout(rawInput) {
-  const collection = await loadLt3Collection(rawInput);
-  const timeoutMs = gifTimeoutForCount(collection.count);
   return withTimeout(
-    buildGifFromCollection(collection),
-    timeoutMs,
-    "GIF generation timed out. Try again with a smaller collection or later."
+    (async () => {
+      const collection = await loadLt3Collection(rawInput);
+      return buildGifFromCollection(collection);
+    })(),
+    gifTimeoutForCount(MAX_NFT_COUNT),
+    "GIF generation timed out. Large collections can take several minutes — try again or use /grid."
   );
 }

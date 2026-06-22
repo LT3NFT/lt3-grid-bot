@@ -1,6 +1,11 @@
 import sharp from "sharp";
 import { GIFEncoder, quantize, applyPalette } from "gifenc/dist/gifenc.esm.js";
-import { GIF_FPS, GIF_FRAME_SIZE, MAX_DISCORD_FILE_BYTES } from "../config.js";
+import { mapWithConcurrency } from "../nft/load-images.js";
+import {
+  GIF_FPS,
+  MAX_DISCORD_FILE_BYTES,
+  gifFrameSizeForCount,
+} from "../config.js";
 
 const BACKGROUND = { r: 243, g: 239, b: 228, alpha: 255 };
 const FRAME_MS = Math.round(1000 / GIF_FPS);
@@ -8,7 +13,8 @@ const FRAME_MS = Math.round(1000 / GIF_FPS);
 async function renderFrame(imageBuffer, size) {
   const { data, info } = await sharp(imageBuffer)
     .resize(size, size, {
-      fit: "contain",
+      fit: "cover",
+      position: "centre",
       background: BACKGROUND,
       kernel: sharp.kernel.lanczos3,
     })
@@ -30,14 +36,18 @@ function encodeGif(frames, delayMs) {
   return Buffer.from(encoder.bytes());
 }
 
-export async function renderCollectionGif(images, frameSize = GIF_FRAME_SIZE) {
-  const sizes = [frameSize, 480, 400, 320, 256];
+export async function renderCollectionGif(images) {
+  const startSize = gifFrameSizeForCount(images.length);
+  const sizes = [startSize, 320, 256, 224].filter(
+    (size, index, arr) => arr.indexOf(size) === index && size <= startSize
+  );
 
   for (const size of sizes) {
-    const frames = [];
-    for (const image of images) {
-      frames.push(await renderFrame(image.buffer, size));
-    }
+    const frames = await mapWithConcurrency(
+      images,
+      images.length > 60 ? 10 : 8,
+      async (image) => renderFrame(image.buffer, size)
+    );
     const buffer = encodeGif(frames, FRAME_MS);
     if (buffer.length <= MAX_DISCORD_FILE_BYTES) {
       return {
@@ -53,6 +63,6 @@ export async function renderCollectionGif(images, frameSize = GIF_FRAME_SIZE) {
   }
 
   throw new Error(
-    "GIF is too large for Discord even at reduced size. Try a wallet with fewer LT3s."
+    `GIF is too large for Discord (${images.length} LT3s). Try /grid instead, or a wallet with fewer LT3s.`
   );
 }
