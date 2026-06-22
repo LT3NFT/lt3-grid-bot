@@ -3,61 +3,47 @@ import { mapWithConcurrency } from "../nft/load-images.js";
 import { MAX_DISCORD_FILE_BYTES } from "../layout/dimensions.js";
 
 const BACKGROUND = { r: 243, g: 239, b: 228, alpha: 255 };
-const CELL_BLEED = 2;
+const EDGE_OVERLAP = 1;
 
-function toPixelRects(rects, width, height) {
-  const w = Math.max(1, Math.round(width));
-  const h = Math.max(1, Math.round(height));
-  const pixelRects = rects.map((rect) => ({
-    imageIndex: rect.imageIndex,
-    x1: Math.floor(rect.x * w),
-    y1: Math.floor(rect.y * h),
-    x2: Math.ceil((rect.x + rect.w) * w),
-    y2: Math.ceil((rect.y + rect.h) * h),
-  }));
+async function fitImageToCell(imageBuffer, cellW, cellH, fitMode) {
+  const mode = fitMode === "cover" ? "cover" : "contain";
+  const background = mode === "contain" ? BACKGROUND : { r: 0, g: 0, b: 0, alpha: 0 };
 
-  // Close sub-pixel gaps between adjacent cells.
-  for (const pr of pixelRects) {
-    pr.x2 = Math.min(w, pr.x2 + 1);
-    pr.y2 = Math.min(h, pr.y2 + 1);
-  }
-
-  return { pixelRects, width: w, height: h };
-}
-
-async function fitImageToCell(imageBuffer, cellW, cellH) {
   return sharp(imageBuffer)
-    .resize(
-      Math.max(1, Math.round(cellW + CELL_BLEED * 2)),
-      Math.max(1, Math.round(cellH + CELL_BLEED * 2)),
-      {
-        fit: "cover",
-        position: "centre",
-        kernel: sharp.kernel.lanczos3,
-      }
-    )
+    .resize(Math.max(1, Math.round(cellW)), Math.max(1, Math.round(cellH)), {
+      fit: mode,
+      position: "centre",
+      background,
+      kernel: sharp.kernel.lanczos3,
+    })
     .png()
     .toBuffer();
 }
 
 export async function renderLayoutToBuffer(layout, images, width, height) {
+  const fitMode = layout.fit || "contain";
   const rects = layout.rects.slice().sort((a, b) => a.imageIndex - b.imageIndex);
-  const { pixelRects, width: w, height: h } = toPixelRects(rects, width, height);
+  const w = Math.max(1, Math.round(width));
+  const h = Math.max(1, Math.round(height));
   const renderConcurrency = images.length > 60 ? 10 : images.length > 30 ? 8 : 6;
 
-  const composites = await mapWithConcurrency(pixelRects, renderConcurrency, async (rect) => {
+  const composites = await mapWithConcurrency(rects, renderConcurrency, async (rect) => {
     const image = images[rect.imageIndex];
     if (!image?.buffer) return null;
 
-    const cellW = Math.max(1, rect.x2 - rect.x1);
-    const cellH = Math.max(1, rect.y2 - rect.y1);
-    const fitted = await fitImageToCell(image.buffer, cellW, cellH);
+    const x1 = Math.round(rect.x * w);
+    const y1 = Math.round(rect.y * h);
+    const x2 = Math.round((rect.x + rect.w) * w);
+    const y2 = Math.round((rect.y + rect.h) * h);
+    let cellW = Math.max(1, x2 - x1);
+    let cellH = Math.max(1, y2 - y1);
 
-    return {
-      input: fitted,
-      left: Math.max(0, rect.x1 - CELL_BLEED),
-      top: Math.max(0, rect.y1 - CELL_BLEED),
-    };
+    // Slight overlap on interior edges closes sub-pixel gaps without cropping.
+    if (x2 < w) cellW += EDGE_OVERLAP;
+    if (y2 < h) cellH += EDGE_OVERLAP;
+
+    const fitted = await fitImageToCell(image.buffer, cellW, cellH, fitMode);
+    return { input: fitted, left: x1, top: y1 };
   });
 
   const canvas = sharp({
