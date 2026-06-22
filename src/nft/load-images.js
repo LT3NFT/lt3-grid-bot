@@ -52,10 +52,10 @@ async function loadBestImageForNft(nft, displayName) {
     throw new Error(`No image URL for ${displayName}`);
   }
 
-  const urls = candidates.slice(0, 2);
+  const urls = candidates.slice(0, 1);
   for (const url of urls) {
     try {
-      return await loadImageFromUrl(url, displayName, 10_000);
+      return await loadImageFromUrl(url, displayName, 8_000);
     } catch {
       // try next
     }
