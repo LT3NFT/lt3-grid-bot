@@ -6,6 +6,7 @@ import {
 import { buildGifForWalletInputWithTimeout } from "../gif-service.js";
 import { pickGifMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
+import { safeDeferReply, safeEditReply, safeReply } from "../util/safe-interaction.js";
 
 export const gifCommandData = {
   name: "gif",
@@ -25,7 +26,7 @@ export async function handleGifCommand(interaction) {
     DISCORD_GRID_CHANNEL_ID &&
     interaction.channelId !== DISCORD_GRID_CHANNEL_ID
   ) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: "Use this command in the designated grid channel.",
       ephemeral: true,
     });
@@ -34,7 +35,7 @@ export async function handleGifCommand(interaction) {
 
   const cooldown = checkCooldown(interaction.user.id, GRID_COOLDOWN_MS, "gif");
   if (!cooldown.ok) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: `Please wait ${cooldown.remainingSeconds}s before requesting another GIF.`,
       ephemeral: true,
     });
@@ -43,13 +44,13 @@ export async function handleGifCommand(interaction) {
 
   const wallet = interaction.options.getString("wallet", true);
 
-  await interaction.deferReply();
+  if (!(await safeDeferReply(interaction))) return;
 
   try {
     const result = await buildGifForWalletInputWithTimeout(wallet);
     const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
 
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: pickGifMessage(),
       files: [attachment],
     });
@@ -59,6 +60,6 @@ export async function handleGifCommand(interaction) {
       err instanceof Error && err.message
         ? err.message
         : "Something went wrong while building your GIF.";
-    await interaction.editReply({ content: message });
+    await safeEditReply(interaction, { content: message });
   }
 }

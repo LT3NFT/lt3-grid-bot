@@ -1,4 +1,4 @@
-import { GRID_TIMEOUT_MS } from "./config.js";
+import { gifTimeoutForCount } from "./config.js";
 import { loadLt3Collection } from "./nft/collection.js";
 import { generateLayouts } from "./layout/generate.js";
 import { getExportDimensionsForLayout } from "./layout/dimensions.js";
@@ -6,8 +6,18 @@ import { pickBestLayout } from "./layout/rank.js";
 import { renderLayoutToBuffer } from "./render/composite.js";
 import { withTimeout } from "./util/wallet-resolve.js";
 
-export async function buildGridForWalletInput(rawInput) {
-  const { address, display, count, images } = await loadLt3Collection(rawInput);
+export async function buildGridForWalletInputWithTimeout(rawInput) {
+  const collection = await loadLt3Collection(rawInput);
+  const timeoutMs = gridTimeoutForCount(collection.count);
+  return withTimeout(
+    buildGridFromCollection(collection),
+    timeoutMs,
+    "Grid generation timed out. Try again with a smaller collection or later."
+  );
+}
+
+async function buildGridFromCollection(collection) {
+  const { address, display, count, images } = collection;
   const layouts = generateLayouts(images);
   const layout = pickBestLayout(layouts);
   if (!layout) {
@@ -29,10 +39,6 @@ export async function buildGridForWalletInput(rawInput) {
   };
 }
 
-export async function buildGridForWalletInputWithTimeout(rawInput) {
-  return withTimeout(
-    buildGridForWalletInput(rawInput),
-    GRID_TIMEOUT_MS,
-    "Grid generation timed out. Try again with a smaller collection or later."
-  );
+export async function buildGridForWalletInput(rawInput) {
+  return buildGridFromCollection(await loadLt3Collection(rawInput));
 }

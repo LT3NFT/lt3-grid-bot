@@ -81,10 +81,12 @@ export function getBaseLayoutDimensions(layout, images) {
 export function getExportDimensionsForLayout(layout, images) {
   const raw = getBaseLayoutDimensions(layout, images);
   const clamped = clampExportDimensions(raw.width, raw.height);
+  const maxLongEdge =
+    images.length > 50 ? 2048 : images.length > 30 ? 3072 : MAX_DISCORD_LONG_EDGE;
   const discordScaled = scaleDimensionsToMaxLongEdge(
     clamped.width,
     clamped.height,
-    MAX_DISCORD_LONG_EDGE
+    maxLongEdge
   );
   const longEdge = Math.max(discordScaled.width, discordScaled.height);
   if (longEdge >= MIN_DISCORD_LONG_EDGE) {

@@ -33,10 +33,18 @@ export function wireBot(client) {
 
   client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
-    if (interaction.commandName === "grid") {
-      await handleGridCommand(interaction);
-    } else if (interaction.commandName === "gif") {
-      await handleGifCommand(interaction);
+    try {
+      if (interaction.commandName === "grid") {
+        await handleGridCommand(interaction);
+      } else if (interaction.commandName === "gif") {
+        await handleGifCommand(interaction);
+      }
+    } catch (err) {
+      console.error("Interaction handler error", err);
     }
+  });
+
+  client.on("error", (err) => {
+    console.error("Discord client error", err);
   });
 }

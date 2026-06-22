@@ -6,6 +6,7 @@ import {
 import { buildGridForWalletInputWithTimeout } from "../grid-service.js";
 import { pickBotMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
+import { safeDeferReply, safeEditReply, safeReply } from "../util/safe-interaction.js";
 
 export const gridCommandData = {
   name: "grid",
@@ -25,7 +26,7 @@ export async function handleGridCommand(interaction) {
     DISCORD_GRID_CHANNEL_ID &&
     interaction.channelId !== DISCORD_GRID_CHANNEL_ID
   ) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: "Use this command in the designated grid channel.",
       ephemeral: true,
     });
@@ -34,7 +35,7 @@ export async function handleGridCommand(interaction) {
 
   const cooldown = checkCooldown(interaction.user.id, GRID_COOLDOWN_MS, "grid");
   if (!cooldown.ok) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: `Please wait ${cooldown.remainingSeconds}s before requesting another grid.`,
       ephemeral: true,
     });
@@ -43,14 +44,14 @@ export async function handleGridCommand(interaction) {
 
   const wallet = interaction.options.getString("wallet", true);
 
-  await interaction.deferReply();
+  if (!(await safeDeferReply(interaction))) return;
 
   try {
     const result = await buildGridForWalletInputWithTimeout(wallet);
     const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
     const summary = pickBotMessage();
 
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: summary,
       files: [attachment],
     });
@@ -60,6 +61,6 @@ export async function handleGridCommand(interaction) {
       err instanceof Error && err.message
         ? err.message
         : "Something went wrong while building your grid.";
-    await interaction.editReply({ content: message });
+    await safeEditReply(interaction, { content: message });
   }
 }

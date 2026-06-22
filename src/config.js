@@ -13,8 +13,14 @@ export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
 export const GRID_COOLDOWN_MS = (Number(process.env.GRID_COOLDOWN_SECONDS) || 30) * 1000;
-export const GRID_TIMEOUT_MS = 60_000;
-export const GIF_TIMEOUT_MS = 120_000;
+export const GRID_TIMEOUT_MS = 180_000;
+export const GIF_TIMEOUT_MS = 300_000;
+export function gridTimeoutForCount(count) {
+  return Math.min(240_000, 90_000 + count * 1500);
+}
+export function gifTimeoutForCount(count) {
+  return Math.min(360_000, 120_000 + count * 2000);
+}
 export const GIF_FPS = 5;
 export const GIF_FRAME_SIZE = 512;
 export const IMAGE_FETCH_CONCURRENCY = 8;
