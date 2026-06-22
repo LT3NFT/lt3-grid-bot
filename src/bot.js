@@ -33,6 +33,7 @@ export function wireBot(client) {
 
   client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
+    console.log(`/${interaction.commandName} from ${interaction.user.tag}`);
     try {
       if (interaction.commandName === "grid") {
         await handleGridCommand(interaction);

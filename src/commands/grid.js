@@ -1,4 +1,4 @@
-import { AttachmentBuilder, ApplicationCommandOptionType } from "discord.js";
+import { AttachmentBuilder, ApplicationCommandOptionType, MessageFlags } from "discord.js";
 import {
   DISCORD_GRID_CHANNEL_ID,
   GRID_COOLDOWN_MS,
@@ -6,7 +6,8 @@ import {
 import { buildGridForWalletInputWithTimeout } from "../grid-service.js";
 import { pickBotMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
-import { safeDeferReply, safeEditReply, safeReply } from "../util/safe-interaction.js";
+import { runHeavyJob } from "../util/heavy-queue.js";
+import { safeDeferReply, safeEditReply } from "../util/safe-interaction.js";
 
 export const gridCommandData = {
   name: "grid",
@@ -22,45 +23,47 @@ export const gridCommandData = {
 };
 
 export async function handleGridCommand(interaction) {
+  if (!(await safeDeferReply(interaction))) return;
+
   if (
     DISCORD_GRID_CHANNEL_ID &&
     interaction.channelId !== DISCORD_GRID_CHANNEL_ID
   ) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: "Use this command in the designated grid channel.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
   const cooldown = checkCooldown(interaction.user.id, GRID_COOLDOWN_MS, "grid");
   if (!cooldown.ok) {
-    await safeReply(interaction, {
+    await safeEditReply(interaction, {
       content: `Please wait ${cooldown.remainingSeconds}s before requesting another grid.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
   const wallet = interaction.options.getString("wallet", true);
 
-  if (!(await safeDeferReply(interaction))) return;
+  await runHeavyJob(async () => {
+    try {
+      const result = await buildGridForWalletInputWithTimeout(wallet);
+      const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
+      const summary = pickBotMessage();
 
-  try {
-    const result = await buildGridForWalletInputWithTimeout(wallet);
-    const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
-    const summary = pickBotMessage();
-
-    await safeEditReply(interaction, {
-      content: summary,
-      files: [attachment],
-    });
-  } catch (err) {
-    console.error("/grid failed", err);
-    const message =
-      err instanceof Error && err.message
-        ? err.message
-        : "Something went wrong while building your grid.";
-    await safeEditReply(interaction, { content: message });
-  }
+      await safeEditReply(interaction, {
+        content: summary,
+        files: [attachment],
+      });
+    } catch (err) {
+      console.error("/grid failed", err);
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Something went wrong while building your grid.";
+      await safeEditReply(interaction, { content: message });
+    }
+  });
 }
