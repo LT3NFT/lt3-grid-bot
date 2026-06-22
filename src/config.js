@@ -12,7 +12,7 @@ export const MAX_DISCORD_LONG_EDGE = 4096;
 export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
-export const BOT_VERSION = "2026-06-22-v7";
+export const BOT_VERSION = "2026-06-22-v8";
 export const GRID_COOLDOWN_MS = (Number(process.env.GRID_COOLDOWN_SECONDS) || 30) * 1000;
 export const GRID_TIMEOUT_MS = 180_000;
 export const GIF_TIMEOUT_MS = 300_000;
@@ -22,11 +22,8 @@ export function gridTimeoutForCount(count) {
 export function gifTimeoutForCount(count) {
   return Math.min(600_000, 180_000 + count * 5000);
 }
-export function gifFrameSizeForCount(count) {
-  if (count > 80) return 200;
-  if (count > 50) return 256;
-  if (count > 25) return 360;
-  return 480;
+export function gifFrameSizeForCount(_count) {
+  return GIF_FRAME_SIZE;
 }
 export function gifFpsForCount(count) {
   if (count > 80) return 4;

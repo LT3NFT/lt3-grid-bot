@@ -75,8 +75,8 @@ async function encodeGifWithFfmpeg(frameBuffers, fps) {
 export async function renderCollectionGif(images) {
   const fps = gifFpsForCount(images.length);
   const startSize = gifFrameSizeForCount(images.length);
-  const sizes = [startSize, 200, 180, 160].filter(
-    (size, index, arr) => arr.indexOf(size) === index && size <= startSize
+  const sizes = [512, 480, 440, 400, 360, 320, 280, 240, 200].filter(
+    (size) => size <= startSize
   );
 
   const renderConcurrency = images.length > 60 ? 16 : 12;
