@@ -11,8 +11,24 @@ export async function safeDeferReply(interaction) {
 export async function safeEditReply(interaction, options) {
   try {
     await interaction.editReply(options);
+    return true;
   } catch (err) {
     console.error("editReply failed", err);
+  }
+
+  try {
+    const content =
+      typeof options?.content === "string"
+        ? options.content
+        : "Your LT3 request finished, but Discord could not update the original reply.";
+    await interaction.followUp({
+      content,
+      files: options?.files,
+    });
+    return true;
+  } catch (err) {
+    console.error("followUp failed", err);
+    return false;
   }
 }
 
