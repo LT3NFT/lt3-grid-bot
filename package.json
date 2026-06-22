@@ -1,0 +1,23 @@
+{
+  "name": "lt3-grid-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LT3 Discord bot — /grid wallet or ENS → near-square NFT grid image",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "register-commands": "node src/register-commands.js",
+    "validate-config": "node scripts/validate-config.js",
+    "test:layout": "node scripts/test-layout.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.22.1",
+    "dotenv": "^16.6.1",
+    "ethers": "5.7.2",
+    "gifenc": "^1.0.3",
+    "sharp": "^0.34.3"
+  }
+}
