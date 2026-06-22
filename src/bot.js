@@ -31,18 +31,19 @@ export function wireBot(client) {
     console.log(`Logged in as ${readyClient.user.tag}`);
   });
 
-  client.on(Events.InteractionCreate, async (interaction) => {
+  client.on(Events.InteractionCreate, (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     console.log(`/${interaction.commandName} from ${interaction.user.tag}`);
-    try {
+    const run = async () => {
       if (interaction.commandName === "grid") {
         await handleGridCommand(interaction);
       } else if (interaction.commandName === "gif") {
         await handleGifCommand(interaction);
       }
-    } catch (err) {
+    };
+    run().catch((err) => {
       console.error("Interaction handler error", err);
-    }
+    });
   });
 
   client.on("error", (err) => {

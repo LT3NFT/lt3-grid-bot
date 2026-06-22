@@ -47,7 +47,7 @@ export async function handleGridCommand(interaction) {
 
   const wallet = interaction.options.getString("wallet", true);
 
-  await runHeavyJob(async () => {
+  runHeavyJob(async () => {
     try {
       const result = await buildGridForWalletInputWithTimeout(wallet);
       const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
@@ -65,5 +65,7 @@ export async function handleGridCommand(interaction) {
           : "Something went wrong while building your grid.";
       await safeEditReply(interaction, { content: message });
     }
+  }).catch((err) => {
+    console.error("/grid job failed", err);
   });
 }

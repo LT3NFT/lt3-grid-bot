@@ -47,7 +47,7 @@ export async function handleGifCommand(interaction) {
 
   const wallet = interaction.options.getString("wallet", true);
 
-  await runHeavyJob(async () => {
+  runHeavyJob(async () => {
     try {
       const result = await buildGifForWalletInputWithTimeout(wallet);
       const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
@@ -64,5 +64,7 @@ export async function handleGifCommand(interaction) {
           : "Something went wrong while building your GIF.";
       await safeEditReply(interaction, { content: message });
     }
+  }).catch((err) => {
+    console.error("/gif job failed", err);
   });
 }
