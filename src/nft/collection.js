@@ -1,5 +1,5 @@
 import {
-  IMAGE_FETCH_CONCURRENCY,
+  imageFetchConcurrencyForCount,
   MAX_NFT_COUNT,
 } from "../config.js";
 import { fetchAllLt3NftsForOwner } from "./fetch.js";
@@ -19,6 +19,9 @@ export async function loadLt3Collection(rawInput) {
     );
   }
 
-  const images = await loadNftImages(nfts, IMAGE_FETCH_CONCURRENCY);
+  const images = await loadNftImages(nfts, {
+    concurrency: imageFetchConcurrencyForCount(nfts.length),
+    fast: nfts.length > 40,
+  });
   return { address, display, count: images.length, images };
 }

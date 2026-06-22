@@ -16,7 +16,7 @@ export const GRID_COOLDOWN_MS = (Number(process.env.GRID_COOLDOWN_SECONDS) || 30
 export const GRID_TIMEOUT_MS = 180_000;
 export const GIF_TIMEOUT_MS = 300_000;
 export function gridTimeoutForCount(count) {
-  return Math.min(240_000, 90_000 + count * 1500);
+  return Math.min(600_000, 180_000 + count * 5000);
 }
 export function gifTimeoutForCount(count) {
   return Math.min(360_000, 120_000 + count * 2000);
@@ -24,6 +24,11 @@ export function gifTimeoutForCount(count) {
 export const GIF_FPS = 5;
 export const GIF_FRAME_SIZE = 512;
 export const IMAGE_FETCH_CONCURRENCY = 8;
+export function imageFetchConcurrencyForCount(count) {
+  if (count > 60) return 16;
+  if (count > 30) return 12;
+  return IMAGE_FETCH_CONCURRENCY;
+}
 
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 export const DISCORD_APPLICATION_ID = String(process.env.DISCORD_APPLICATION_ID || "").trim();

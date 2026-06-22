@@ -1,10 +1,10 @@
 import sharp from "sharp";
 import { getNftImageUrlCandidates, getNftTokenId } from "./normalize.js";
 
-async function fetchImageBuffer(url) {
+async function fetchImageBuffer(url, timeoutMs) {
   const res = await fetch(url, {
     headers: { Accept: "image/*,*/*" },
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
     throw new Error(`Image fetch failed (${res.status})`);
@@ -12,8 +12,8 @@ async function fetchImageBuffer(url) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-async function loadImageFromUrl(url, displayName) {
-  const buffer = await fetchImageBuffer(url);
+async function loadImageFromUrl(url, displayName, timeoutMs) {
+  const buffer = await fetchImageBuffer(url, timeoutMs);
   const meta = await sharp(buffer).metadata();
   const width = meta.width || 1;
   const height = meta.height || 1;
@@ -44,16 +44,30 @@ async function mapWithConcurrency(items, concurrency, fn) {
 
 const MIN_IMAGE_LONG_EDGE = 800;
 
-async function loadBestImageForNft(nft, displayName) {
+async function loadBestImageForNft(nft, displayName, { fast = false } = {}) {
   const candidates = getNftImageUrlCandidates(nft);
   if (!candidates.length) {
     throw new Error(`No image URL for ${displayName}`);
   }
 
+  const timeoutMs = fast ? 12_000 : 20_000;
+  const urls = fast ? candidates.slice(0, 2) : candidates;
+
+  if (fast) {
+    for (const url of urls) {
+      try {
+        return await loadImageFromUrl(url, displayName, timeoutMs);
+      } catch {
+        // try next
+      }
+    }
+    throw new Error(`Could not load image for ${displayName}`);
+  }
+
   let best = null;
-  for (const url of candidates) {
+  for (const url of urls) {
     try {
-      const loaded = await loadImageFromUrl(url, displayName);
+      const loaded = await loadImageFromUrl(url, displayName, timeoutMs);
       const longEdge = Math.max(loaded.width, loaded.height);
       if (!best || longEdge > Math.max(best.width, best.height)) {
         best = loaded;
@@ -70,10 +84,15 @@ async function loadBestImageForNft(nft, displayName) {
   return best;
 }
 
-export async function loadNftImages(nfts, concurrency = 8) {
+export async function loadNftImages(nfts, options = {}) {
+  const concurrency = options.concurrency ?? 8;
+  const fast = options.fast ?? false;
+
   return mapWithConcurrency(nfts, concurrency, async (nft) => {
     const tokenId = getNftTokenId(nft) ?? "?";
     const displayName = `LT3 #${tokenId}`;
-    return loadBestImageForNft(nft, displayName);
+    return loadBestImageForNft(nft, displayName, { fast });
   });
 }
+
+export { mapWithConcurrency };

@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { mapWithConcurrency } from "../nft/load-images.js";
 import { MAX_DISCORD_FILE_BYTES } from "../layout/dimensions.js";
 
 const BACKGROUND = { r: 243, g: 239, b: 228, alpha: 255 };
@@ -13,27 +14,18 @@ async function fitImageToCell(imageBuffer, cellW, cellH, fitMode) {
       background,
       kernel: sharp.kernel.lanczos3,
     })
-    .png()
+    .jpeg({ quality: 90 })
     .toBuffer();
 }
 
 export async function renderLayoutToBuffer(layout, images, width, height) {
-  const canvas = sharp({
-    create: {
-      width: Math.max(1, Math.round(width)),
-      height: Math.max(1, Math.round(height)),
-      channels: 4,
-      background: BACKGROUND,
-    },
-  });
-
   const fitMode = layout.fit || "contain";
   const rects = layout.rects.slice().sort((a, b) => a.imageIndex - b.imageIndex);
-  const composites = [];
+  const renderConcurrency = images.length > 60 ? 10 : images.length > 30 ? 8 : 6;
 
-  for (const rect of rects) {
+  const composites = await mapWithConcurrency(rects, renderConcurrency, async (rect) => {
     const image = images[rect.imageIndex];
-    if (!image?.buffer) continue;
+    if (!image?.buffer) return null;
 
     const x1 = Math.round(rect.x * width);
     const y1 = Math.round(rect.y * height);
@@ -43,10 +35,19 @@ export async function renderLayoutToBuffer(layout, images, width, height) {
     const cellH = Math.max(1, y2 - y1);
 
     const fitted = await fitImageToCell(image.buffer, cellW, cellH, fitMode);
-    composites.push({ input: fitted, left: x1, top: y1 });
-  }
+    return { input: fitted, left: x1, top: y1 };
+  });
 
-  let pipeline = canvas.composite(composites);
+  const canvas = sharp({
+    create: {
+      width: Math.max(1, Math.round(width)),
+      height: Math.max(1, Math.round(height)),
+      channels: 4,
+      background: BACKGROUND,
+    },
+  });
+
+  let pipeline = canvas.composite(composites.filter(Boolean));
 
   let png = await pipeline.png({ compressionLevel: 6 }).toBuffer();
   if (png.length <= MAX_DISCORD_FILE_BYTES) {

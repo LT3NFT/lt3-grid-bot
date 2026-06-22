@@ -1,20 +1,10 @@
-import { gifTimeoutForCount } from "./config.js";
+import { gridTimeoutForCount, MAX_NFT_COUNT } from "./config.js";
 import { loadLt3Collection } from "./nft/collection.js";
 import { generateLayouts } from "./layout/generate.js";
 import { getExportDimensionsForLayout } from "./layout/dimensions.js";
 import { pickBestLayout } from "./layout/rank.js";
 import { renderLayoutToBuffer } from "./render/composite.js";
 import { withTimeout } from "./util/wallet-resolve.js";
-
-export async function buildGridForWalletInputWithTimeout(rawInput) {
-  const collection = await loadLt3Collection(rawInput);
-  const timeoutMs = gridTimeoutForCount(collection.count);
-  return withTimeout(
-    buildGridFromCollection(collection),
-    timeoutMs,
-    "Grid generation timed out. Try again with a smaller collection or later."
-  );
-}
 
 async function buildGridFromCollection(collection) {
   const { address, display, count, images } = collection;
@@ -40,5 +30,17 @@ async function buildGridFromCollection(collection) {
 }
 
 export async function buildGridForWalletInput(rawInput) {
-  return buildGridFromCollection(await loadLt3Collection(rawInput));
+  const collection = await loadLt3Collection(rawInput);
+  return buildGridFromCollection(collection);
+}
+
+export async function buildGridForWalletInputWithTimeout(rawInput) {
+  return withTimeout(
+    (async () => {
+      const collection = await loadLt3Collection(rawInput);
+      return buildGridFromCollection(collection);
+    })(),
+    gridTimeoutForCount(MAX_NFT_COUNT),
+    "Grid generation timed out. Large collections can take several minutes — try again in a moment."
+  );
 }
