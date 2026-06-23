@@ -7,7 +7,7 @@ import { buildGifForWalletInputWithTimeout } from "../gif-service.js";
 import { pickGifMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runGifJob } from "../util/heavy-queue.js";
-import { safeDeferReply, safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
+import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
 
 export const gifCommandData = {
   name: "gif",
@@ -23,8 +23,6 @@ export const gifCommandData = {
 };
 
 export async function handleGifCommand(interaction) {
-  if (!(await safeDeferReply(interaction))) return;
-
   if (
     DISCORD_GRID_CHANNEL_ID &&
     interaction.channelId !== DISCORD_GRID_CHANNEL_ID
@@ -74,9 +72,6 @@ export async function handleGifCommand(interaction) {
         void safeEditReply(interaction, {
           content: `Hang tight — ${ahead} other GIF${ahead === 1 ? "" : "s"} ahead of yours.`,
         });
-      },
-      onStart: () => {
-        void safeEditReply(interaction, { content: "Building your GIF…" });
       },
     }
   ).catch((err) => {
