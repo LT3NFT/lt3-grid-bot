@@ -58,7 +58,7 @@ export async function renderLayoutToBuffer(layout, images, width, height) {
 
   let pipeline = canvas.composite(composites.filter(Boolean));
 
-  let png = await pipeline.png({ compressionLevel: 3 }).toBuffer();
+  let png = await pipeline.png({ compressionLevel: 1 }).toBuffer();
   if (png.length <= MAX_DISCORD_FILE_BYTES) {
     return { buffer: png, extension: "png", mime: "image/png" };
   }

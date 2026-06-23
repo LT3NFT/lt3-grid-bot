@@ -151,6 +151,10 @@ async function loadBestImageForNft(nft, displayName, options) {
   let image = await tryUrlsForNft(nft, displayName, options);
   if (image) return image;
 
+  if (options.skipMetadataRefresh) {
+    return createPlaceholderImage(displayName);
+  }
+
   const refreshed = await fetchNftMetadata(nft);
   if (refreshed) {
     image = await tryUrlsForNft(refreshed, displayName, {
@@ -187,6 +191,7 @@ export async function loadNftImages(nfts, options = {}) {
     maxLongEdge: options.maxLongEdge ?? 1200,
     maxUrlAttempts: options.maxUrlAttempts ?? 10,
     preferCdn: options.preferCdn ?? false,
+    skipMetadataRefresh: options.skipMetadataRefresh ?? false,
   };
 
   return mapWithConcurrency(nfts, concurrency, async (nft) => {

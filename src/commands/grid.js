@@ -6,8 +6,8 @@ import {
 import { buildGridForWalletInputWithTimeout } from "../grid-service.js";
 import { pickBotMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
-import { runGridJob } from "../util/heavy-queue.js";
-import { safeDeferReply, safeEditReply } from "../util/safe-interaction.js";
+import { runHeavyJob } from "../util/heavy-queue.js";
+import { safeDeferReply, safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
 
 export const gridCommandData = {
   name: "grid",
@@ -47,8 +47,9 @@ export async function handleGridCommand(interaction) {
 
   const wallet = interaction.options.getString("wallet", true);
 
-  runGridJob(
+  runHeavyJob(
     async () => {
+      const stopProgress = startProgressUpdates(interaction, "Building your grid");
       try {
         const result = await buildGridForWalletInputWithTimeout(wallet);
         const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
@@ -65,12 +66,14 @@ export async function handleGridCommand(interaction) {
             ? err.message
             : "Something went wrong while building your grid.";
         await safeEditReply(interaction, { content: message });
+      } finally {
+        stopProgress();
       }
     },
     {
       onQueued: (ahead) => {
         safeEditReply(interaction, {
-          content: `Hang tight — ${ahead} other grid${ahead === 1 ? "" : "s"} ahead of yours.`,
+          content: `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`,
         });
       },
     }

@@ -12,9 +12,10 @@ export const MAX_DISCORD_LONG_EDGE = 4096;
 export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
-export const BOT_VERSION = "2026-06-22-v12";
-export const MAX_CONCURRENT_GRID_JOBS = Number(process.env.MAX_CONCURRENT_GRID_JOBS) || 3;
-export const MAX_CONCURRENT_GIF_JOBS = Number(process.env.MAX_CONCURRENT_GIF_JOBS) || 2;
+export const BOT_VERSION = "2026-06-22-v13";
+export const MAX_CONCURRENT_HEAVY_JOBS = Number(process.env.MAX_CONCURRENT_HEAVY_JOBS) || 3;
+export const MAX_CONCURRENT_GRID_JOBS = MAX_CONCURRENT_HEAVY_JOBS;
+export const MAX_CONCURRENT_GIF_JOBS = MAX_CONCURRENT_HEAVY_JOBS;
 export const GRID_COOLDOWN_MS = (Number(process.env.GRID_COOLDOWN_SECONDS) || 30) * 1000;
 export const GRID_TIMEOUT_MS = 180_000;
 export const GIF_TIMEOUT_MS = 300_000;
@@ -36,8 +37,8 @@ export const GIF_FRAME_SIZE = 512;
 export const IMAGE_FETCH_CONCURRENCY = 8;
 export function imageFetchConcurrencyForCount(count) {
   if (count <= 30) return 20;
-  if (count <= 60) return 12;
-  return 8;
+  if (count <= 70) return 16;
+  return 12;
 }
 export function gridDecodeLongEdgeForCount(count) {
   if (count <= 30) return 768;
@@ -45,10 +46,13 @@ export function gridDecodeLongEdgeForCount(count) {
   if (count <= 70) return 1024;
   return 1152;
 }
+export function gifDecodeLongEdgeForCount(_count) {
+  return 640;
+}
 export function renderConcurrencyForCount(count) {
-  if (count <= 30) return 16;
-  if (count <= 60) return 10;
-  return 8;
+  if (count <= 30) return 20;
+  if (count <= 70) return 14;
+  return 10;
 }
 
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();

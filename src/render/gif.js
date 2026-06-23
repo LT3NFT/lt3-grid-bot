@@ -8,9 +8,9 @@ import {
 } from "../config.js";
 
 const BACKGROUND = { r: 243, g: 239, b: 228, alpha: 255 };
-const FFMPEG_ENCODE_TIMEOUT_MS = 180_000;
+const FFMPEG_ENCODE_TIMEOUT_MS = 120_000;
 
-async function renderFramePng(imageBuffer, size) {
+async function renderFrameJpeg(imageBuffer, size) {
   return sharp(imageBuffer)
     .resize(size, size, {
       fit: "cover",
@@ -18,24 +18,28 @@ async function renderFramePng(imageBuffer, size) {
       background: BACKGROUND,
       kernel: sharp.kernel.lanczos3,
     })
-    .png({ compressionLevel: 6 })
+    .jpeg({ quality: 90, mozjpeg: true })
     .toBuffer();
 }
 
-async function encodeGifWithFfmpeg(frameBuffers, fps) {
+async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize) {
   return new Promise((resolve, reject) => {
+    const scale =
+      outputSize > 0
+        ? `scale=${outputSize}:${outputSize}:flags=lanczos,`
+        : "";
     const args = [
       "-y",
       "-f",
       "image2pipe",
       "-vcodec",
-      "png",
+      "mjpeg",
       "-framerate",
       String(fps),
       "-i",
       "pipe:0",
       "-vf",
-      `fps=${fps},scale=trunc(iw/2)*2:trunc(ih/2)*2:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3`,
+      `${scale}fps=${fps},split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=single[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3`,
       "-loop",
       "0",
       "-f",
@@ -89,19 +93,19 @@ async function encodeGifWithFfmpeg(frameBuffers, fps) {
 
 export async function renderCollectionGif(images) {
   const fps = gifFpsForCount(images.length);
-  const startSize = gifFrameSizeForCount(images.length);
-  const sizes = [512, 480, 440, 400, 360, 320, 280, 240, 200].filter(
-    (size) => size <= startSize
+  const renderSize = gifFrameSizeForCount(images.length);
+  const renderConcurrency = Math.min(20, Math.max(12, images.length));
+
+  const frameBuffers = await mapWithConcurrency(images, renderConcurrency, async (image) =>
+    renderFrameJpeg(image.buffer, renderSize)
   );
 
-  const renderConcurrency = images.length > 60 ? 16 : 12;
+  const sizes = [512, 480, 440, 400, 360, 320, 280, 240, 200].filter(
+    (size) => size <= renderSize
+  );
 
   for (const size of sizes) {
-    const frameBuffers = await mapWithConcurrency(images, renderConcurrency, async (image) =>
-      renderFramePng(image.buffer, size)
-    );
-
-    const buffer = await encodeGifWithFfmpeg(frameBuffers, fps);
+    const buffer = await encodeGifWithFfmpeg(frameBuffers, fps, size);
     if (buffer.length <= MAX_DISCORD_FILE_BYTES) {
       return {
         buffer,

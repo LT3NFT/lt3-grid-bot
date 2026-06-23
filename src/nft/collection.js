@@ -1,5 +1,6 @@
 import {
   gridDecodeLongEdgeForCount,
+  gifDecodeLongEdgeForCount,
   imageFetchConcurrencyForCount,
   MAX_NFT_COUNT,
 } from "../config.js";
@@ -25,9 +26,14 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
   const isGif = options.purpose === "gif";
   const images = await loadNftImages(nfts, {
     concurrency: imageFetchConcurrencyForCount(nfts.length),
-    maxLongEdge: isGrid ? gridDecodeLongEdgeForCount(nfts.length) : 1200,
-    maxUrlAttempts: isGrid ? 4 : isGif ? 6 : 10,
+    maxLongEdge: isGrid
+      ? gridDecodeLongEdgeForCount(nfts.length)
+      : isGif
+        ? gifDecodeLongEdgeForCount(nfts.length)
+        : 1200,
+    maxUrlAttempts: isGrid ? 4 : isGif ? 3 : 10,
     preferCdn: isGrid || isGif,
+    skipMetadataRefresh: isGif,
   });
   return { address, display, count: images.length, images };
 }
