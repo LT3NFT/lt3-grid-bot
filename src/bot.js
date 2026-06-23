@@ -56,15 +56,20 @@ export function wireBot(client) {
     console.log(`Logged in as ${readyClient.user.tag}`);
   });
 
+  client.on("shardDisconnect", () => {
+    botReady = false;
+    console.warn("Discord disconnected — waiting to reconnect");
+  });
+
   client.on(Events.InteractionCreate, (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "grid" && interaction.commandName !== "gif") return;
 
-    const run = async () => {
+    void (async () => {
       if (!botReady) {
         try {
           await interaction.reply({
-            content: "Bot is still starting up — try again in a few seconds.",
+            content: "Bot is reconnecting — wait 10 seconds and try a fresh command.",
             ephemeral: true,
           });
         } catch {
@@ -77,16 +82,15 @@ export function wireBot(client) {
 
       console.log(`/${interaction.commandName} from ${interaction.user.tag}`);
 
-      if (interaction.commandName === "grid") {
-        await handleGridCommand(interaction);
-      } else if (interaction.commandName === "gif") {
-        await handleGifCommand(interaction);
-      }
-    };
+      const run =
+        interaction.commandName === "grid"
+          ? handleGridCommand(interaction)
+          : handleGifCommand(interaction);
 
-    run().catch((err) => {
-      console.error("Interaction handler error", err);
-    });
+      run.catch((err) => {
+        console.error("Command handler error", err);
+      });
+    })();
   });
 
   client.on("error", (err) => {
