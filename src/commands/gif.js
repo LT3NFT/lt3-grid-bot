@@ -44,40 +44,42 @@ export async function handleGifCommand(interaction) {
   }
 
   const wallet = interaction.options.getString("wallet", true);
+  const stopProgress = startProgressUpdates(interaction, "Building your GIF");
 
-  runGifJob(
-    async () => {
-      const stopProgress = startProgressUpdates(interaction, "Building your GIF");
-      try {
-        const result = await buildGifForWalletInputWithTimeout(wallet);
-        const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
+  try {
+    await runGifJob(
+      async () => {
+        try {
+          const result = await buildGifForWalletInputWithTimeout(wallet);
+          const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
 
-        await safeEditReply(interaction, {
-          content: pickGifMessage(),
-          files: [attachment],
-        });
-      } catch (err) {
-        console.error("/gif failed", err);
-        const message =
-          err instanceof Error && err.message
-            ? err.message
-            : "Something went wrong while building your GIF.";
-        await safeEditReply(interaction, { content: message });
-      } finally {
-        stopProgress();
-      }
-    },
-    {
-      onQueued: (ahead) => {
-        void safeEditReply(interaction, {
-          content: `Hang tight — ${ahead} other GIF${ahead === 1 ? "" : "s"} ahead of yours.`,
-        });
+          await safeEditReply(interaction, {
+            content: pickGifMessage(),
+            files: [attachment],
+          });
+        } catch (err) {
+          console.error("/gif failed", err);
+          const message =
+            err instanceof Error && err.message
+              ? err.message
+              : "Something went wrong while building your GIF.";
+          await safeEditReply(interaction, { content: message });
+        }
       },
-    }
-  ).catch((err) => {
+      {
+        onQueued: (ahead) => {
+          void safeEditReply(interaction, {
+            content: `Hang tight — ${ahead} other GIF${ahead === 1 ? "" : "s"} ahead of yours.`,
+          });
+        },
+      }
+    );
+  } catch (err) {
     console.error("/gif job failed", err);
-    void safeEditReply(interaction, {
+    await safeEditReply(interaction, {
       content: "Something went wrong while building your GIF.",
     });
-  });
+  } finally {
+    stopProgress();
+  }
 }

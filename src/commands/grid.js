@@ -6,7 +6,7 @@ import {
 import { buildGridForWalletInputWithTimeout } from "../grid-service.js";
 import { pickBotMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
-import { runGridJob } from "../util/heavy-queue.js";
+import { isGifRunning, runGridJob } from "../util/heavy-queue.js";
 import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
 
 export const gridCommandData = {
@@ -44,41 +44,45 @@ export async function handleGridCommand(interaction) {
   }
 
   const wallet = interaction.options.getString("wallet", true);
+  const stopProgress = startProgressUpdates(interaction, "Building your grid");
 
-  runGridJob(
-    async () => {
-      const stopProgress = startProgressUpdates(interaction, "Building your grid");
-      try {
-        const result = await buildGridForWalletInputWithTimeout(wallet);
-        const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
-        const summary = pickBotMessage();
+  try {
+    await runGridJob(
+      async () => {
+        try {
+          const result = await buildGridForWalletInputWithTimeout(wallet);
+          const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
+          const summary = pickBotMessage();
 
-        await safeEditReply(interaction, {
-          content: summary,
-          files: [attachment],
-        });
-      } catch (err) {
-        console.error("/grid failed", err);
-        const message =
-          err instanceof Error && err.message
-            ? err.message
-            : "Something went wrong while building your grid.";
-        await safeEditReply(interaction, { content: message });
-      } finally {
-        stopProgress();
-      }
-    },
-    {
-      onQueued: (ahead) => {
-        void safeEditReply(interaction, {
-          content: `Hang tight — ${ahead} other grid${ahead === 1 ? "" : "s"} ahead of yours.`,
-        });
+          await safeEditReply(interaction, {
+            content: summary,
+            files: [attachment],
+          });
+        } catch (err) {
+          console.error("/grid failed", err);
+          const message =
+            err instanceof Error && err.message
+              ? err.message
+              : "Something went wrong while building your grid.";
+          await safeEditReply(interaction, { content: message });
+        }
       },
-    }
-  ).catch((err) => {
+      {
+        onQueued: (ahead) => {
+          const msg =
+            ahead === 1 && isGifRunning()
+              ? "A GIF is being made first — yours is queued and will start right after."
+              : `Hang tight — ${ahead} other grid${ahead === 1 ? "" : "s"} ahead of yours.`;
+          void safeEditReply(interaction, { content: msg });
+        },
+      }
+    );
+  } catch (err) {
     console.error("/grid job failed", err);
-    void safeEditReply(interaction, {
+    await safeEditReply(interaction, {
       content: "Something went wrong while building your grid.",
     });
-  });
+  } finally {
+    stopProgress();
+  }
 }
