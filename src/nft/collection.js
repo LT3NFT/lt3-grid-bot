@@ -31,7 +31,7 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
       : isGif
         ? gifDecodeLongEdgeForCount(nfts.length)
         : 1200,
-    maxUrlAttempts: isGrid ? 4 : isGif ? 3 : 10,
+    maxUrlAttempts: isGrid ? 4 : isGif ? 4 : 10,
     preferCdn: isGrid || isGif,
     skipMetadataRefresh: isGif,
   });

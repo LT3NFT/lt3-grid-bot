@@ -10,7 +10,7 @@ import {
 const BACKGROUND = { r: 243, g: 239, b: 228, alpha: 255 };
 const FFMPEG_ENCODE_TIMEOUT_MS = 120_000;
 
-async function renderFrameJpeg(imageBuffer, size) {
+async function renderFramePng(imageBuffer, size) {
   return sharp(imageBuffer)
     .resize(size, size, {
       fit: "cover",
@@ -18,7 +18,7 @@ async function renderFrameJpeg(imageBuffer, size) {
       background: BACKGROUND,
       kernel: sharp.kernel.lanczos3,
     })
-    .jpeg({ quality: 90, mozjpeg: true })
+    .png({ compressionLevel: 6 })
     .toBuffer();
 }
 
@@ -33,13 +33,13 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize) {
       "-f",
       "image2pipe",
       "-vcodec",
-      "mjpeg",
+      "png",
       "-framerate",
       String(fps),
       "-i",
       "pipe:0",
       "-vf",
-      `${scale}fps=${fps},split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=single[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3`,
+      `${scale}fps=${fps},split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3`,
       "-loop",
       "0",
       "-f",
@@ -97,7 +97,7 @@ export async function renderCollectionGif(images) {
   const renderConcurrency = Math.min(20, Math.max(12, images.length));
 
   const frameBuffers = await mapWithConcurrency(images, renderConcurrency, async (image) =>
-    renderFrameJpeg(image.buffer, renderSize)
+    renderFramePng(image.buffer, renderSize)
   );
 
   const sizes = [512, 480, 440, 400, 360, 320, 280, 240, 200].filter(

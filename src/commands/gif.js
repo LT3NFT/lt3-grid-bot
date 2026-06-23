@@ -6,7 +6,7 @@ import {
 import { buildGifForWalletInputWithTimeout } from "../gif-service.js";
 import { pickGifMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
-import { runHeavyJob } from "../util/heavy-queue.js";
+import { runGifJob } from "../util/heavy-queue.js";
 import { safeDeferReply, safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
 
 export const gifCommandData = {
@@ -47,7 +47,7 @@ export async function handleGifCommand(interaction) {
 
   const wallet = interaction.options.getString("wallet", true);
 
-  runHeavyJob(
+  runGifJob(
     async () => {
       const stopProgress = startProgressUpdates(interaction, "Building your GIF");
       try {
@@ -71,12 +71,18 @@ export async function handleGifCommand(interaction) {
     },
     {
       onQueued: (ahead) => {
-        safeEditReply(interaction, {
-          content: `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`,
+        void safeEditReply(interaction, {
+          content: `Hang tight — ${ahead} other GIF${ahead === 1 ? "" : "s"} ahead of yours.`,
         });
+      },
+      onStart: () => {
+        void safeEditReply(interaction, { content: "Building your GIF…" });
       },
     }
   ).catch((err) => {
     console.error("/gif job failed", err);
+    void safeEditReply(interaction, {
+      content: "Something went wrong while building your GIF.",
+    });
   });
 }
