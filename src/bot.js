@@ -21,7 +21,11 @@ export function createBotClient() {
 export async function registerGuildCommands() {
   assertBotConfig();
   const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
-  await rest.put(Routes.applicationGuildCommands(DISCORD_APPLICATION_ID, DISCORD_GUILD_ID), {
+
+  // Drop global commands — only guild commands, with no default role lock.
+  await rest.put(Routes.applicationCommands(DISCORD_APPLICATION_ID), { body: [] });
+
+  return rest.put(Routes.applicationGuildCommands(DISCORD_APPLICATION_ID, DISCORD_GUILD_ID), {
     body: [gridCommandData, gifCommandData],
   });
 }

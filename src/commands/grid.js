@@ -9,7 +9,10 @@ import { checkCooldown } from "../util/cooldown.js";
 import { runGridJob } from "../util/heavy-queue.js";
 import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
 
+import { publicSlashCommandDefaults } from "./public-defaults.js";
+
 export const gridCommandData = {
+  ...publicSlashCommandDefaults,
   name: "grid",
   description: "Generate a near-square LT3 grid from a wallet address or ENS name",
   options: [

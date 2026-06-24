@@ -9,7 +9,10 @@ import { checkCooldown } from "../util/cooldown.js";
 import { runGifJob } from "../util/heavy-queue.js";
 import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
 
+import { publicSlashCommandDefaults } from "./public-defaults.js";
+
 export const gifCommandData = {
+  ...publicSlashCommandDefaults,
   name: "gif",
   description: "Generate a flipbook GIF of your LT3s (5 FPS, saveable for X)",
   options: [
