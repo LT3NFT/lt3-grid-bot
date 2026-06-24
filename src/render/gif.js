@@ -97,20 +97,20 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize, frameSize, tim
   });
 }
 
-export async function renderCollectionGif(images, hooks = {}) {
+export async function renderCollectionGif(images) {
   const fps = gifFpsForCount(images.length);
   const renderSize = gifFrameSizeForCount(images.length);
   const renderConcurrency = gifRenderConcurrencyForCount(images.length);
   const encodeTimeoutMs = ffmpegTimeoutForFrameCount(images.length);
 
-  hooks.onStage?.("frames", images.length);
+  console.log(`[gif] ${images.length} frames @ ${renderSize}px, ${fps}fps`);
   const frameBuffers = await mapWithConcurrency(images, renderConcurrency, async (image) =>
     renderFramePng(image.buffer, renderSize)
   );
 
   const encodeTargets = gifEncodeScaleTargets(renderSize);
   for (const outputSize of encodeTargets) {
-    hooks.onStage?.("encode", outputSize);
+    console.log(`[gif] encoding at ${outputSize}px`);
     const buffer = await encodeGifWithFfmpeg(
       frameBuffers,
       fps,

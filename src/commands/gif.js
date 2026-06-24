@@ -24,25 +24,6 @@ export const gifCommandData = {
   ],
 };
 
-function stageMessage(stage, detail) {
-  switch (stage) {
-    case "resolve":
-      return "Looking up wallet…";
-    case "fetch":
-      return typeof detail === "number"
-        ? `Found ${detail} LT3${detail === 1 ? "" : "s"} — loading artwork…`
-        : "Fetching your LT3s…";
-    case "images":
-      return `Loading artwork for ${detail} LT3${detail === 1 ? "" : "s"}…`;
-    case "frames":
-      return `Rendering ${detail} flipbook frame${detail === 1 ? "" : "s"}…`;
-    case "encode":
-      return `Encoding GIF (${detail}px) — almost there…`;
-    default:
-      return "Building your GIF…";
-  }
-}
-
 export async function handleGifCommand(interaction) {
   if (
     DISCORD_GRID_CHANNEL_ID &&
@@ -65,23 +46,13 @@ export async function handleGifCommand(interaction) {
   }
 
   const wallet = interaction.options.getString("wallet", true);
-  let lastStageAt = 0;
-  const reportStage = (stage, detail) => {
-    const now = Date.now();
-    if (now - lastStageAt < 4000) return;
-    lastStageAt = now;
-    void safeEditReply(interaction, { content: stageMessage(stage, detail) });
-  };
-
-  const stopProgress = startProgressUpdates(interaction, "Building your GIF", 15_000);
+  const stopProgress = startProgressUpdates(interaction, "Building your GIF");
 
   try {
     await runGifJob(
       async () => {
         try {
-          const result = await buildGifForWalletInputWithTimeout(wallet, {
-            onStage: reportStage,
-          });
+          const result = await buildGifForWalletInputWithTimeout(wallet);
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
 
           await safeEditReply(interaction, {
