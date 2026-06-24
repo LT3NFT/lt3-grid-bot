@@ -6,7 +6,7 @@ import {
 import { buildGridForWalletInputWithTimeout } from "../grid-service.js";
 import { pickBotMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
-import { isGifRunning, runGridJob } from "../util/heavy-queue.js";
+import { runGridJob } from "../util/heavy-queue.js";
 import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
 
 export const gridCommandData = {
@@ -69,11 +69,9 @@ export async function handleGridCommand(interaction) {
       },
       {
         onQueued: (ahead) => {
-          const msg =
-            ahead === 1 && isGifRunning()
-              ? "A GIF is being made first — yours is queued and will start right after."
-              : `Hang tight — ${ahead} other grid${ahead === 1 ? "" : "s"} ahead of yours.`;
-          void safeEditReply(interaction, { content: msg });
+          void safeEditReply(interaction, {
+            content: `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`,
+          });
         },
       }
     );

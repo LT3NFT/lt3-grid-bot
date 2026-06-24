@@ -14,12 +14,6 @@ import {
 import { gridCommandData, handleGridCommand } from "./commands/grid.js";
 import { gifCommandData, handleGifCommand } from "./commands/gif.js";
 
-let botReady = false;
-
-export function isBotReady() {
-  return botReady;
-}
-
 export function createBotClient() {
   return new Client({ intents: [GatewayIntentBits.Guilds] });
 }
@@ -52,32 +46,23 @@ async function deferOrExplain(interaction) {
 
 export function wireBot(client) {
   client.once(Events.ClientReady, (readyClient) => {
-    botReady = true;
     console.log(`Logged in as ${readyClient.user.tag}`);
   });
 
-  client.on("shardDisconnect", () => {
-    botReady = false;
-    console.warn("Discord disconnected — waiting to reconnect");
+  client.on("shardDisconnect", (_event, shardId) => {
+    console.warn(`Discord shard ${shardId} disconnected — reconnecting`);
+  });
+
+  client.on("shardReconnect", (shardId) => {
+    console.log(`Discord shard ${shardId} reconnected`);
   });
 
   client.on(Events.InteractionCreate, (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "grid" && interaction.commandName !== "gif") return;
 
+    // Defer in the first microtask — never gate on a stale "ready" flag after reconnect.
     void (async () => {
-      if (!botReady) {
-        try {
-          await interaction.reply({
-            content: "Bot is reconnecting — wait 10 seconds and try a fresh command.",
-            ephemeral: true,
-          });
-        } catch {
-          // ignore
-        }
-        return;
-      }
-
       if (!(await deferOrExplain(interaction))) return;
 
       console.log(`/${interaction.commandName} from ${interaction.user.tag}`);

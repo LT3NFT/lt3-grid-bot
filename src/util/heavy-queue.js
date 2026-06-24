@@ -1,92 +1,76 @@
 import {
   MAX_CONCURRENT_GIF_JOBS,
   MAX_CONCURRENT_GRID_JOBS,
+  MAX_TOTAL_HEAVY_JOBS,
 } from "../config.js";
 
-function createJobPool(maxConcurrent) {
-  let active = 0;
+function createHeavyQueue() {
+  let totalActive = 0;
+  let gridActive = 0;
+  let gifActive = 0;
   const waiting = [];
 
-  function startNext() {
-    if (active >= maxConcurrent || waiting.length === 0) return;
-
-    active += 1;
-    const { fn, resolve, reject, onStart } = waiting.shift();
-    onStart?.();
-
-    Promise.resolve()
-      .then(fn)
-      .then(resolve, reject)
-      .finally(() => {
-        active -= 1;
-        startNext();
-      });
+  function queueDepth() {
+    return waiting.length;
   }
 
-  return function runJob(fn, hooks = {}) {
+  function canStart(job) {
+    if (totalActive >= MAX_TOTAL_HEAVY_JOBS) return false;
+    if (job.kind === "grid" && gridActive >= MAX_CONCURRENT_GRID_JOBS) return false;
+    if (job.kind === "gif" && gifActive >= MAX_CONCURRENT_GIF_JOBS) return false;
+    return true;
+  }
+
+  function startNext() {
+    for (let i = 0; i < waiting.length; i += 1) {
+      const job = waiting[i];
+      if (!canStart(job)) continue;
+
+      waiting.splice(i, 1);
+      totalActive += 1;
+      if (job.kind === "grid") gridActive += 1;
+      if (job.kind === "gif") gifActive += 1;
+      job.onStart?.();
+
+      Promise.resolve()
+        .then(job.fn)
+        .then(job.resolve, job.reject)
+        .finally(() => {
+          totalActive -= 1;
+          if (job.kind === "grid") gridActive -= 1;
+          if (job.kind === "gif") gifActive -= 1;
+          startNext();
+        });
+
+      return startNext();
+    }
+  }
+
+  return function enqueue(kind, fn, hooks = {}) {
     return new Promise((resolve, reject) => {
-      const queuedAhead = waiting.length + (active >= maxConcurrent ? 1 : 0);
-      if (queuedAhead > 0) {
-        hooks.onQueued?.(queuedAhead);
+      const ahead = queueDepth() + (canStart({ kind }) ? 0 : 1);
+      if (ahead > 0) {
+        hooks.onQueued?.(ahead);
       }
 
-      waiting.push({ fn, resolve, reject, onStart: hooks.onStart });
+      waiting.push({
+        kind,
+        fn,
+        resolve,
+        reject,
+        onStart: hooks.onStart,
+      });
       startNext();
     });
   };
 }
 
-const gridPool = createJobPool(MAX_CONCURRENT_GRID_JOBS);
-const gifPool = createJobPool(MAX_CONCURRENT_GIF_JOBS);
+const enqueue = createHeavyQueue();
 
-let gifJobsRunning = 0;
-const gifWaiters = [];
-
-export function isGifRunning() {
-  return gifJobsRunning > 0;
-}
-
-function notifyGifWaiters() {
-  if (gifJobsRunning > 0) return;
-  const waiters = gifWaiters.splice(0);
-  for (const resume of waiters) resume();
-}
-
-function waitUntilNoGif() {
-  if (gifJobsRunning === 0) return Promise.resolve();
-  return new Promise((resolve) => {
-    gifWaiters.push(resolve);
-  });
-}
-
-/** GIF gets exclusive VM time — grids wait so nothing crashes or freezes. */
-export function runGifJob(fn, hooks = {}) {
-  return gifPool(async () => {
-    gifJobsRunning += 1;
-    try {
-      return await fn();
-    } finally {
-      gifJobsRunning -= 1;
-      notifyGifWaiters();
-    }
-  }, hooks);
-}
-
-/** Up to N grids in parallel, but never while a GIF is encoding. */
 export function runGridJob(fn, hooks = {}) {
-  return new Promise((resolve, reject) => {
-    const start = async () => {
-      if (gifJobsRunning > 0) {
-        hooks.onQueued?.(1);
-        await waitUntilNoGif();
-      }
-      try {
-        const result = await gridPool(fn, hooks);
-        resolve(result);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    start();
-  });
+  return enqueue("grid", fn, hooks);
+}
+
+export function runGifJob(fn, hooks = {}) {
+  return enqueue("gif", fn, hooks);
 }
