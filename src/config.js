@@ -12,7 +12,7 @@ export const MAX_DISCORD_LONG_EDGE = 4096;
 export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
-export const BOT_VERSION = "2026-06-22-v20";
+export const BOT_VERSION = "2026-06-22-v21";
 export const MAX_TOTAL_HEAVY_JOBS = Number(process.env.MAX_TOTAL_HEAVY_JOBS) || 2;
 export const MAX_CONCURRENT_GRID_JOBS = Number(process.env.MAX_CONCURRENT_GRID_JOBS) || 2;
 export const MAX_CONCURRENT_GIF_JOBS = Number(process.env.MAX_CONCURRENT_GIF_JOBS) || 1;
@@ -23,14 +23,40 @@ export function gridTimeoutForCount(count) {
   return Math.min(600_000, 180_000 + count * 5000);
 }
 export function gifTimeoutForCount(count) {
-  return Math.min(900_000, 240_000 + count * 8000);
+  return Math.min(900_000, 180_000 + count * 6000);
 }
-export function gifFrameSizeForCount(_count) {
-  return GIF_FRAME_SIZE;
+export function gifFrameSizeForCount(count) {
+  if (count <= 20) return 512;
+  if (count <= 35) return 480;
+  if (count <= 50) return 420;
+  if (count <= 70) return 380;
+  return 340;
+}
+/** Max ffmpeg encode attempts — scale down in ffmpeg, do not re-render frames. */
+export function gifEncodeScaleTargets(renderSize) {
+  const targets = [renderSize];
+  for (const size of [440, 400, 360, 320, 280, 240]) {
+    if (size < renderSize) targets.push(size);
+  }
+  return targets.slice(0, 4);
 }
 export function gifFpsForCount(count) {
   if (count > 80) return 4;
+  if (count > 50) return 4;
   return 5;
+}
+export function gifRenderConcurrencyForCount(count) {
+  if (count <= 30) return 8;
+  if (count <= 70) return 6;
+  return 4;
+}
+export function imageFetchConcurrencyForGif(count) {
+  if (count <= 30) return 12;
+  if (count <= 70) return 10;
+  return 8;
+}
+export function ffmpegTimeoutForFrameCount(frameCount) {
+  return Math.min(180_000, 45_000 + frameCount * 1500);
 }
 export const GIF_FPS = 5;
 export const GIF_FRAME_SIZE = 512;

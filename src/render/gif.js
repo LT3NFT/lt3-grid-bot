@@ -2,13 +2,15 @@ import { spawn } from "child_process";
 import sharp from "sharp";
 import { mapWithConcurrency } from "../nft/load-images.js";
 import {
+  ffmpegTimeoutForFrameCount,
+  gifEncodeScaleTargets,
   gifFpsForCount,
   gifFrameSizeForCount,
+  gifRenderConcurrencyForCount,
   MAX_DISCORD_FILE_BYTES,
 } from "../config.js";
 
 const BACKGROUND = { r: 243, g: 239, b: 228, alpha: 255 };
-const FFMPEG_ENCODE_TIMEOUT_MS = 120_000;
 
 async function renderFramePng(imageBuffer, size) {
   return sharp(imageBuffer)
@@ -22,10 +24,10 @@ async function renderFramePng(imageBuffer, size) {
     .toBuffer();
 }
 
-async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize) {
+async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize, frameSize, timeoutMs) {
   return new Promise((resolve, reject) => {
     const scale =
-      outputSize > 0
+      outputSize > 0 && outputSize !== frameSize
         ? `scale=${outputSize}:${outputSize}:flags=lanczos,`
         : "";
     const args = [
@@ -52,8 +54,8 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize) {
     const stdoutChunks = [];
     const timeout = setTimeout(() => {
       proc.kill("SIGKILL");
-      reject(new Error("GIF encoding timed out."));
-    }, FFMPEG_ENCODE_TIMEOUT_MS);
+      reject(new Error("GIF encoding timed out — try again or use /grid."));
+    }, timeoutMs);
 
     proc.stderr.on("data", (chunk) => {
       stderr += chunk.toString();
@@ -63,6 +65,10 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize) {
     });
     proc.on("error", (err) => {
       clearTimeout(timeout);
+      if (err.code === "ENOENT") {
+        reject(new Error("ffmpeg is not installed on the server — contact the team."));
+        return;
+      }
       reject(err);
     });
     proc.on("close", (code) => {
@@ -91,26 +97,33 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize) {
   });
 }
 
-export async function renderCollectionGif(images) {
+export async function renderCollectionGif(images, hooks = {}) {
   const fps = gifFpsForCount(images.length);
   const renderSize = gifFrameSizeForCount(images.length);
-  const renderConcurrency = Math.min(20, Math.max(12, images.length));
+  const renderConcurrency = gifRenderConcurrencyForCount(images.length);
+  const encodeTimeoutMs = ffmpegTimeoutForFrameCount(images.length);
 
+  hooks.onStage?.("frames", images.length);
   const frameBuffers = await mapWithConcurrency(images, renderConcurrency, async (image) =>
     renderFramePng(image.buffer, renderSize)
   );
 
-  const sizes = [512, 480, 440, 400, 360, 320, 280, 240, 200].filter(
-    (size) => size <= renderSize
-  );
-
-  for (const size of sizes) {
-    const buffer = await encodeGifWithFfmpeg(frameBuffers, fps, size);
+  const encodeTargets = gifEncodeScaleTargets(renderSize);
+  for (const outputSize of encodeTargets) {
+    hooks.onStage?.("encode", outputSize);
+    const buffer = await encodeGifWithFfmpeg(
+      frameBuffers,
+      fps,
+      outputSize,
+      renderSize,
+      encodeTimeoutMs
+    );
     if (buffer.length <= MAX_DISCORD_FILE_BYTES) {
+      const finalSize = outputSize > 0 ? outputSize : renderSize;
       return {
         buffer,
-        width: size,
-        height: size,
+        width: finalSize,
+        height: finalSize,
         frameCount: images.length,
         fps,
         extension: "gif",

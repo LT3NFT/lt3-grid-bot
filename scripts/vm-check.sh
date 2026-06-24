@@ -25,5 +25,9 @@ echo "=== grid bot logs ==="
 pm2 logs lt3-grid-bot --lines 12 --nostream
 
 echo ""
+echo "=== ffmpeg ==="
+command -v ffmpeg >/dev/null && ffmpeg -version | head -1 || echo "MISSING — run: sudo apt install -y ffmpeg"
+
+echo ""
 echo "=== sales bot logs ==="
 pm2 logs lt3bot --lines 8 --nostream 2>/dev/null || echo "(lt3bot not running)"

@@ -42,14 +42,14 @@ export async function safeReply(interaction, options) {
   }
 }
 
-export function startProgressUpdates(interaction, label) {
+export function startProgressUpdates(interaction, label, intervalMs = PROGRESS_INTERVAL_MS) {
   let elapsed = 0;
   const timer = setInterval(() => {
-    elapsed += PROGRESS_INTERVAL_MS / 1000;
+    elapsed += intervalMs / 1000;
     void safeEditReply(interaction, {
       content: `${label}… still working (${Math.round(elapsed)}s).`,
     });
-  }, PROGRESS_INTERVAL_MS);
+  }, intervalMs);
 
   return () => clearInterval(timer);
 }

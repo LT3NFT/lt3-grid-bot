@@ -2,6 +2,7 @@ import {
   gridDecodeLongEdgeForCount,
   gifDecodeLongEdgeForCount,
   imageFetchConcurrencyForCount,
+  imageFetchConcurrencyForGif,
   MAX_NFT_COUNT,
 } from "../config.js";
 import { fetchAllLt3NftsForOwner } from "./fetch.js";
@@ -25,7 +26,9 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
   const isGrid = options.purpose === "grid";
   const isGif = options.purpose === "gif";
   const images = await loadNftImages(nfts, {
-    concurrency: imageFetchConcurrencyForCount(nfts.length),
+    concurrency: isGif
+      ? imageFetchConcurrencyForGif(nfts.length)
+      : imageFetchConcurrencyForCount(nfts.length),
     maxLongEdge: isGrid
       ? gridDecodeLongEdgeForCount(nfts.length)
       : isGif

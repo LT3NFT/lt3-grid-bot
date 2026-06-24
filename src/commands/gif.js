@@ -8,7 +8,6 @@ import { pickGifMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runGifJob } from "../util/heavy-queue.js";
 import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
-
 import { publicSlashCommandDefaults } from "./public-defaults.js";
 
 export const gifCommandData = {
@@ -24,6 +23,25 @@ export const gifCommandData = {
     },
   ],
 };
+
+function stageMessage(stage, detail) {
+  switch (stage) {
+    case "resolve":
+      return "Looking up wallet…";
+    case "fetch":
+      return typeof detail === "number"
+        ? `Found ${detail} LT3${detail === 1 ? "" : "s"} — loading artwork…`
+        : "Fetching your LT3s…";
+    case "images":
+      return `Loading artwork for ${detail} LT3${detail === 1 ? "" : "s"}…`;
+    case "frames":
+      return `Rendering ${detail} flipbook frame${detail === 1 ? "" : "s"}…`;
+    case "encode":
+      return `Encoding GIF (${detail}px) — almost there…`;
+    default:
+      return "Building your GIF…";
+  }
+}
 
 export async function handleGifCommand(interaction) {
   if (
@@ -47,13 +65,23 @@ export async function handleGifCommand(interaction) {
   }
 
   const wallet = interaction.options.getString("wallet", true);
-  const stopProgress = startProgressUpdates(interaction, "Building your GIF");
+  let lastStageAt = 0;
+  const reportStage = (stage, detail) => {
+    const now = Date.now();
+    if (now - lastStageAt < 4000) return;
+    lastStageAt = now;
+    void safeEditReply(interaction, { content: stageMessage(stage, detail) });
+  };
+
+  const stopProgress = startProgressUpdates(interaction, "Building your GIF", 15_000);
 
   try {
     await runGifJob(
       async () => {
         try {
-          const result = await buildGifForWalletInputWithTimeout(wallet);
+          const result = await buildGifForWalletInputWithTimeout(wallet, {
+            onStage: reportStage,
+          });
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
 
           await safeEditReply(interaction, {
@@ -72,7 +100,7 @@ export async function handleGifCommand(interaction) {
       {
         onQueued: (ahead) => {
           void safeEditReply(interaction, {
-            content: `Hang tight — ${ahead} other GIF${ahead === 1 ? "" : "s"} ahead of yours.`,
+            content: `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`,
           });
         },
       }

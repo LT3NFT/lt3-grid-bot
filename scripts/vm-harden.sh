@@ -6,6 +6,12 @@ set -euo pipefail
 echo "=== VM memory (before) ==="
 free -h
 
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  echo "=== Installing ffmpeg ==="
+  sudo apt-get update -qq
+  sudo apt-get install -y ffmpeg
+fi
+
 if ! swapon --show 2>/dev/null | grep -q '/swapfile'; then
   echo "=== Adding 2G swap (prevents OOM freezes) ==="
   sudo fallocate -l 2G /swapfile
