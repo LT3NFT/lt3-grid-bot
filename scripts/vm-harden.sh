@@ -33,11 +33,25 @@ pm2 save
 
 echo "=== Restart lt3bot (sales) ==="
 if pm2 describe lt3bot >/dev/null 2>&1; then
-  cd ~/lt3bot
-  git pull || true
+  sales_dir="$(pm2 jlist 2>/dev/null | node -e "
+    let d='';
+    process.stdin.on('data',c=>d+=c);
+    process.stdin.on('end',()=>{
+      try {
+        const apps=JSON.parse(d);
+        const bot=apps.find(a=>a.name==='lt3bot');
+        console.log(bot?.pm2_env?.pm_cwd || '');
+      } catch { console.log(''); }
+    });
+  ")"
+  if [[ -n "$sales_dir" && -d "$sales_dir/.git" ]]; then
+    (cd "$sales_dir" && git pull) || true
+  else
+    echo "note: sales bot repo not at ~/lt3bot — skipping git pull (pm2 restart only)"
+  fi
   pm2 restart lt3bot --update-env
 else
-  echo "warning: lt3bot not found in pm2 — start it from ~/lt3bot when ready"
+  echo "warning: lt3bot not found in pm2 — start it from your sales bot folder when ready"
 fi
 
 pm2 save
