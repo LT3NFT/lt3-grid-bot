@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node src/index.js",
     "register-commands": "node src/register-commands.js",
+    "check-commands": "node scripts/check-discord-commands.js",
     "validate-config": "node scripts/validate-config.js",
     "test:layout": "node scripts/test-layout.js"
   },

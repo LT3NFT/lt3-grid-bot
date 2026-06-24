@@ -25,6 +25,7 @@ git pull
 npm ci
 mkdir -p logs
 npm run register-commands
+npm run check-commands
 
 if pm2 describe lt3-grid-bot >/dev/null 2>&1; then
   pm2 delete lt3-grid-bot
