@@ -28,7 +28,7 @@ assert("caps length", capped.length <= 75);
 const egg = sanitizeChatReply("🥚", { allowEgg: true });
 assert("keeps egg emoji", egg.includes("🥚"));
 
-assert("utility copy present", SCRIPTED.utility.includes("It's simple"));
+assert("utility copy exact", SCRIPTED.utility.includes("they will spam your dms"));
 
 if (failed) {
   console.error(`\n${failed} test(s) failed`);

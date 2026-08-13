@@ -9,7 +9,7 @@ const TRADING_RE =
 
 export const SCRIPTED = {
   utility:
-    "It's simple. Set your nft as pfp. Others notice. Dms follow.",
+    'It\'s simple. When u have your nft, set it as pfp. Other girls will see it and be like "wow where did u get this" and they will spam your dms.',
   redirect: "Not my lane. Art, community, growth — ask me about those.",
   tradingFallback:
     "Research builds conviction. Hold what you believe in. NFA.",

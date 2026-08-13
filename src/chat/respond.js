@@ -17,6 +17,7 @@ export async function buildChatReply(cleanText) {
 
   if (trigger?.kind === "empty") return SCRIPTED.empty;
   if (trigger?.kind === "egg") return sanitizeChatReply("🥚", { allowEgg: true });
+  if (trigger?.kind === "utility") return SCRIPTED.utility;
   if (trigger?.reply) return sanitizeChatReply(trigger.reply);
   if (trigger?.kind === "floor") {
     const floor = await fetchLt3FloorReply();
