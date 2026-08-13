@@ -1,6 +1,6 @@
 # LT3 Grid Discord Bot
 
-Discord bot for the LT3 community server. Responds to `/grid` with a near-square NFT grid image for any wallet address or ENS name.
+Discord bot for the LT3 community server. Responds to `/grid` and `/gif`, and replies when @mentioned or when users reply to its messages.
 
 ## Setup
 
@@ -9,7 +9,7 @@ Discord bot for the LT3 community server. Responds to `/grid` with a near-square
 1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and create an application.
 2. Go to **Bot** → create a bot → copy the **token** → `DISCORD_TOKEN`.
 3. Copy the **Application ID** from General Information → `DISCORD_APPLICATION_ID`.
-4. Enable **Message Content Intent** is not required; only slash commands are used.
+4. Under **Bot → Privileged Gateway Intents**, enable **Message Content Intent** (required for chat replies). Slash commands work without it; chat does not.
 
 ### 2. Invite the bot to the LT3 server
 
@@ -40,6 +40,10 @@ Optional:
 
 - `DISCORD_GRID_CHANNEL_ID` — restrict `/grid` to one channel
 - `GRID_COOLDOWN_SECONDS` — per-user cooldown (default 30)
+- `OPENAI_API_KEY` — enables @mention / reply chat personality
+- `OPENSEA_API_KEY` — live LT3 floor price in chat (same key as sales bot)
+- `CHAT_CHANNEL_IDS` — comma-separated allowlist (empty = all except blocklist)
+- `CHAT_BLOCKED_CHANNEL_IDS` — e.g. `#sales-bot` channel ID
 
 ### 4. Install and register commands
 
@@ -65,6 +69,19 @@ Host on Railway, Render, Fly.io, or a VPS — Discord bots need a persistent pro
 
 The bot auto-picks the most square layout (same ranking as the web tool) and replies with a PNG or JPEG attachment.
 
+## Chat personality
+
+When `OPENAI_API_KEY` is set, LT3BOT replies in allowed channels if:
+
+- Someone @mentions the bot, or
+- Someone replies directly to a bot message
+
+`/grid`, `/gif`, and the **sales bot** (separate webhook process) are unchanged. Chat is isolated in `src/chat/`.
+
+```
+npm run test:chat
+```
+
 ## Local testing
 
 Layout logic without Discord credentials:
@@ -84,6 +101,7 @@ node -e "import('./src/grid-service.js').then(m => m.buildGridForWalletInput('0x
 ```
 src/
   bot.js              Discord client + command registration
+  chat/               @mention personality (isolated from grid/gif)
   commands/grid.js    /grid slash command handler
   grid-service.js     Wallet → grid pipeline
   layout/             Ported layout engine from lt3-grid-tool

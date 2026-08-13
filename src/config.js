@@ -89,6 +89,30 @@ export const DISCORD_GUILD_ID = String(process.env.DISCORD_GUILD_ID || "").trim(
 export const DISCORD_GRID_CHANNEL_ID = String(process.env.DISCORD_GRID_CHANNEL_ID || "").trim();
 export const LT3_ALCHEMY_KEY = String(process.env.LT3_ALCHEMY_KEY || "").trim();
 
+/** OpenSea / Reservoir key — optional; enables live floor price in chat. */
+export const OPENSEA_API_KEY = String(process.env.OPENSEA_API_KEY || "").trim();
+
+/** Chat personality (optional — grid/gif work without these). */
+export const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || "").trim();
+export const CHAT_ENABLED =
+  String(process.env.CHAT_ENABLED || "").trim() !== "false" && Boolean(OPENAI_API_KEY);
+export const CHAT_MAX_CHARS = Number(process.env.CHAT_MAX_CHARS) || 75;
+export const CHAT_LLM_MODEL = String(process.env.CHAT_LLM_MODEL || "gpt-4o-mini").trim();
+export const CHAT_LLM_TIMEOUT_MS = Number(process.env.CHAT_LLM_TIMEOUT_MS) || 12_000;
+
+function parseIdList(raw) {
+  return new Set(
+    String(raw || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
+/** Empty = all channels except blocklist. */
+export const CHAT_CHANNEL_IDS = parseIdList(process.env.CHAT_CHANNEL_IDS);
+export const CHAT_BLOCKED_CHANNEL_IDS = parseIdList(process.env.CHAT_BLOCKED_CHANNEL_IDS);
+
 export function assertBotConfig() {
   const missing = [];
   if (!DISCORD_TOKEN) missing.push("DISCORD_TOKEN");

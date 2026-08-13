@@ -12,9 +12,11 @@
     "register-commands": "node src/register-commands.js",
     "check-commands": "node scripts/check-discord-commands.js",
     "validate-config": "node scripts/validate-config.js",
-    "test:layout": "node scripts/test-layout.js"
+    "test:layout": "node scripts/test-layout.js",
+    "test:chat": "node scripts/test-chat.js"
   },
   "dependencies": {
+    "openai": "^6.9.0",
     "discord.js": "^14.22.1",
     "dotenv": "^16.6.1",
     "ethers": "5.7.2",

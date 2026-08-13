@@ -13,9 +13,16 @@ import {
 } from "./config.js";
 import { gridCommandData, handleGridCommand } from "./commands/grid.js";
 import { gifCommandData, handleGifCommand } from "./commands/gif.js";
+import { wireChat } from "./chat/handler.js";
 
 export function createBotClient() {
-  return new Client({ intents: [GatewayIntentBits.Guilds] });
+  return new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+  });
 }
 
 export async function registerGuildCommands() {
@@ -85,4 +92,6 @@ export function wireBot(client) {
   client.on("error", (err) => {
     console.error("Discord client error", err);
   });
+
+  wireChat(client);
 }
