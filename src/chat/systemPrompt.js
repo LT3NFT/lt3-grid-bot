@@ -135,7 +135,7 @@ export function buildChatSystemPrompt(userContext, userText = "") {
     prompt += `\n\nDo NOT start your reply with hey, hi, hello, gm, good morning, or any greeting. They didn't greet you. Continue the conversation naturally.`;
   }
 
-  if (!userAskedQuestion) {
+  if (!userAskedQuestion && !userContext?.barryLookingUpJoke) {
     prompt += `\n\nDo not end your reply with a question. Statement only.`;
   }
 
@@ -143,6 +143,19 @@ export function buildChatSystemPrompt(userContext, userText = "") {
     prompt += `
 
 Special: Cearwylm (Cear) — old friend from before you went dark. Extra warm she's here, but still short and chill, not formal.`;
+  }
+
+  if (userContext?.barryLookingUpJoke) {
+    prompt += `
+
+Special: Barry — community inside joke. He hates the "Looking Up" eye trait in LT3. This message only: one dry sarcastic nod if it fits. Play on "what's up" if he said that, or mention spotting a Looking Up LT3. Subtle, funny, not mean. One line.`;
+    if (/\b(what'?s up|whats up)\b/i.test(trimmed)) {
+      prompt += ` He literally asked what's up — lean into the Looking Up trait joke if you can do it naturally.`;
+    }
+  } else if (userContext?.isBarry) {
+    prompt += `
+
+Special: Barry — you know the Looking Up trait inside joke but skip it this time. Talk to him normally.`;
   }
 
   if (userContext?.displayName || userContext?.username) {
@@ -223,6 +236,25 @@ export const ASSISTANT_FALLBACK = "Say that again. I lost the signal.";
 export function isCearUser(username, displayName) {
   const hay = `${username ?? ""} ${displayName ?? ""}`.toLowerCase();
   return hay.includes("cearwylm") || /\bcear\b/.test(hay);
+}
+
+export function isBarryUser(username, displayName) {
+  const u = (username ?? "").toLowerCase();
+  if (u === "barry6067" || u.includes("barry6067")) return true;
+  return (displayName ?? "").toLowerCase() === "barry";
+}
+
+/** ~20% casual, ~33% when message sets up the joke (what's up, traits, etc.). */
+export function shouldBarryLookingUpJoke(userText, username = "", displayName = "") {
+  const t = userText.trim().toLowerCase();
+  const prime = /\b(what'?s up|whats up|sup|looking|eyes?|traits?|favorites?|favourite|lt3s?)\b/i.test(t);
+  let h = 0;
+  const seed = `${username}:${displayName}:${userText}`;
+  for (let i = 0; i < seed.length; i++) {
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) >>> 0;
+  }
+  if (prime) return h % 3 === 0;
+  return h % 5 === 0;
 }
 
 /** Drop a trailing question when the user didn't ask one. */

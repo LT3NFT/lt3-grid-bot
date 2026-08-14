@@ -1,6 +1,7 @@
 import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
+  isBarryUser,
   isCoffeeOrMorningMessage,
   isLightheartedMessage,
   isWelcomeBackMessage,
@@ -9,6 +10,7 @@ import {
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
+  shouldBarryLookingUpJoke,
   stripLeadingGreeting,
   stripTrailingQuestion,
   userGreetedFirst,
@@ -58,6 +60,15 @@ assert("caps length", capped.length <= 100);
 assert("cear user detect", isCearUser("someone", "Cearwylm"));
 assert("cear nickname detect", isCearUser("cearwylm", "Cear"));
 assert("not cear", !isCearUser("jacklt3", "Jack"));
+assert("barry username detect", isBarryUser("Barry6067", "Barry"));
+assert("barry display detect", isBarryUser("someone", "Barry"));
+assert("not barry", !isBarryUser("jacklt3", "Jack"));
+assert("barry joke whats up sometimes", shouldBarryLookingUpJoke("what's up", "Barry6067", "Barry") !== undefined);
+assert(
+  "barry joke deterministic",
+  shouldBarryLookingUpJoke("what's up", "Barry6067", "Barry") ===
+    shouldBarryLookingUpJoke("what's up", "Barry6067", "Barry")
+);
 
 assert("assistant phrase detect", looksLikeAssistantReply("Hello. How can I assist you today?"));
 assert("boring phrase detect", looksLikeBoringReply("Hey there, good to see you around."));

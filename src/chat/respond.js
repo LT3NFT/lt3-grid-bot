@@ -53,7 +53,8 @@ export async function buildChatReply(cleanText, userContext) {
   if (!userGreetedFirst(cleanText) && looksLikeUnpromptedGreeting(reply)) {
     reply = stripLeadingGreeting(reply);
   }
-  reply = stripTrailingQuestion(reply, cleanText.includes("?"));
+  const skipStripQuestion = userContext?.barryLookingUpJoke;
+  reply = stripTrailingQuestion(reply, cleanText.includes("?") || skipStripQuestion);
   if (trigger?.kind === "trading") reply = sanitizeChatReply(appendNfa(reply));
   return reply;
 }
