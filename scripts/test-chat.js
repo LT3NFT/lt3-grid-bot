@@ -113,6 +113,7 @@ assert("welcome back thanks", isWelcomeBackMessage("thank you for being here"));
 assert("lighthearted lol", isLightheartedMessage("lol that's hilarious"));
 assert("lighthearted name ask", isLightheartedMessage("what would a clever egg name be for superhighgasfees"));
 assert("coffee morning detect", isCoffeeOrMorningMessage("just grabbed my coffee"));
+assert("motor oil detect", isCoffeeOrMorningMessage("you prefer motor oil right"));
 assert("user greeted hey", userGreetedFirst("hey what's good"));
 assert("user not greeted", !userGreetedFirst("what you been up to"));
 assert("unprompted greeting detect", looksLikeUnpromptedGreeting("Hey. Mostly vibing today."));
