@@ -3,7 +3,7 @@ import { fetchLt3FloorReply } from "./floor.js";
 import { maxCharsForInput } from "./length.js";
 import { generateChatReply } from "./llm.js";
 import { sanitizeChatReply } from "./sanitize.js";
-import { stripTrailingQuestion } from "./systemPrompt.js";
+import { stripTrailingQuestion, stripLeadingGreeting, userGreetedFirst, looksLikeUnpromptedGreeting } from "./systemPrompt.js";
 import { SCRIPTED, matchScriptedTrigger, pickGreetingFallback } from "./triggers.js";
 
 function appendNfa(text) {
@@ -50,6 +50,9 @@ export async function buildChatReply(cleanText, userContext) {
   }
 
   let reply = sanitizeChatReply(llmText, { maxChars });
+  if (!userGreetedFirst(cleanText) && looksLikeUnpromptedGreeting(reply)) {
+    reply = stripLeadingGreeting(reply);
+  }
   reply = stripTrailingQuestion(reply, cleanText.includes("?"));
   if (trigger?.kind === "trading") reply = sanitizeChatReply(appendNfa(reply));
   return reply;

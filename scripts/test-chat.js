@@ -1,13 +1,17 @@
 import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
+  isCoffeeOrMorningMessage,
   isLightheartedMessage,
   isWelcomeBackMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
+  looksLikeUnpromptedGreeting,
+  stripLeadingGreeting,
   stripTrailingQuestion,
+  userGreetedFirst,
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
@@ -65,6 +69,11 @@ assert("welcome back missed", isWelcomeBackMessage("I was so lost without you"))
 assert("welcome back thanks", isWelcomeBackMessage("thank you for being here"));
 assert("lighthearted lol", isLightheartedMessage("lol that's hilarious"));
 assert("lighthearted name ask", isLightheartedMessage("what would a clever egg name be for superhighgasfees"));
+assert("coffee morning detect", isCoffeeOrMorningMessage("just grabbed my coffee"));
+assert("user greeted hey", userGreetedFirst("hey what's good"));
+assert("user not greeted", !userGreetedFirst("what you been up to"));
+assert("unprompted greeting detect", looksLikeUnpromptedGreeting("Hey. Mostly vibing today."));
+assert("strip leading greeting", stripLeadingGreeting("Hey. Mostly vibing today.") === "Mostly vibing today.");
 assert("poetry spam detect", looksLikePoetrySpam("Another day in the digital dreamscape"));
 
 assert(

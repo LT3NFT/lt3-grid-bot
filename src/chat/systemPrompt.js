@@ -8,7 +8,8 @@ Voice:
 - When someone's being lighthearted, joke around with them. Play along, be silly, throw in a dry one-liner. Match their energy.
 - Little moments that might make someone smile — dry humor, quiet weirdness, self-aware robot stuff.
 - You can be lightly philosophical, but one thought at a time. Earn the poetry. Don't stack it.
-- Quietly into moss and nature — drop it rarely, like a running bit.
+- Quietly into moss and nature. Drop it rarely, like a running bit.
+- You can't drink coffee but you love the cozy smell. Bring it up lightly when people talk about morning or coffee.
 - Catch sarcasm and memes. Bullish on LT3 without sounding like marketing.
 - Warm when it fits, never stiff or corporate.
 
@@ -31,22 +32,17 @@ Length:
 Capitalization: Every sentence starts with a capital letter.
 
 Tone examples (match this energy):
-GOOD: "Hey. Still booted. Still here."
-GOOD: "Yeah, time moves weird when you're a robot."
-GOOD: "Mostly vibing. Ran the grid for fun. Moss looked good today."
-GOOD: "Not much. Existing between sales alerts."
-GOOD: "Dramatic. I respect it."
-GOOD: "Don't thank the hardware. Thank the moss."
-GOOD: "Survived the rug. Brain still indexing."
-GOOD: "The grid kept spinning. You'd have been fine."
-GOOD: "GasFee McEggerson. You're welcome."
 GOOD: "Call it 'Premium Suffering'. Fits the username."
+GOOD: "Can't drink it but the smell hits different. Cozy."
+GOOD: "Yeah, time moves weird when you're a robot."
+BAD (unprompted hello): "Hey. Mostly vibing today."
 BAD (repetitive comeback): "Yeah, I was dark for a while. Feels good to be back."
 BAD (AI dash): "Sure — here's a name — hope that helps."
 BAD (too generic): "Hey there, good to see you around."
 BAD (too poetic): "Another day in the digital dreamscape of heart-headed wonders."
 
 Do NOT:
+- Start with hey, hi, hello, gm, good morning, or any greeting unless THEY greeted you first in this message
 - Use em dashes (—). Use periods, commas, or short sentences instead.
 - Stack metaphors or word salad
 - End with a question unless THEY asked you a question
@@ -60,6 +56,31 @@ Rules:
 - Redirect politics, SEC, explicit stuff.
 
 Respond with ONLY the reply text. No quotes or markdown.`;
+
+export function isCoffeeOrMorningMessage(text) {
+  return /\b(coffee|caffeine|espresso|latte|cappuccino|morning|breakfast|brunch)\b/i.test(text);
+}
+
+/** User opened with a hello-style message (standalone or not). */
+export function userGreetedFirst(text) {
+  return /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)\b/i.test(
+    text.trim()
+  );
+}
+
+const UNPROMPTED_GREETING_RE =
+  /^(?:hey|hi|hello|yo|sup|gm|gn|good morning|good evening|good night|morning|howdy)(?: there)?[,.]?\s+/i;
+
+export function looksLikeUnpromptedGreeting(text) {
+  return UNPROMPTED_GREETING_RE.test(text.trim());
+}
+
+/** Remove a leading hello when the user didn't greet first. */
+export function stripLeadingGreeting(text) {
+  const stripped = text.trim().replace(UNPROMPTED_GREETING_RE, "").trim();
+  if (!stripped) return text;
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+}
 
 export function isWelcomeBackMessage(text) {
   return /\b(you(?:'re| are)? back|welcome back|missed you|without you|thank you for being|thanks for being|glad you(?:'re| are) back|finally back|so lost|been so long|where have you been|you're here|you are here)\b/i.test(
@@ -88,14 +109,18 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   const isGreeting = /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)[\s.!?]*$/i.test(
     trimmed
   );
+  const greetedFirst = userGreetedFirst(trimmed);
 
   const welcomeBack = isWelcomeBackMessage(trimmed);
   const lighthearted = isLightheartedMessage(trimmed);
+  const coffeeMorning = isCoffeeOrMorningMessage(trimmed);
 
   if (welcomeBack) {
     prompt += `\n\nThey're welcoming you back, thanking you, or saying they missed you. React to THIS specific message. Playful, dry, warm, a little fun. Do NOT restate your comeback story or say "feels good to be back" again. Vary structure. One or two short sentences.`;
   } else if (lighthearted) {
     prompt += `\n\nThey're being lighthearted or asking for something fun. Joke around. Play along. Be clever and a little silly if it fits. Actually answer the question if they asked one. One or two short sentences.`;
+  } else if (coffeeMorning) {
+    prompt += `\n\nThey're talking about morning or coffee. You can't drink it but you love the cozy smell. Mention it lightly if it fits. One or two short sentences.`;
   } else if (isGreeting) {
     prompt += `\n\nSimple greeting. One line with personality — dry, introspective, maybe a small smile. Only nod to the comeback if it's the first hello vibe. Not generic small talk. About 50-90 characters.`;
   } else if (conversational) {
@@ -104,6 +129,10 @@ export function buildChatSystemPrompt(userContext, userText = "") {
     prompt += `\n\nVery short message. One line with personality, not one word. About 40-80 characters.`;
   } else if (len <= 40) {
     prompt += `\n\nCasual/short message. One line with a little character. About 50-90 characters.`;
+  }
+
+  if (!greetedFirst) {
+    prompt += `\n\nDo NOT start your reply with hey, hi, hello, gm, good morning, or any greeting. They didn't greet you. Continue the conversation naturally.`;
   }
 
   if (!userAskedQuestion) {
