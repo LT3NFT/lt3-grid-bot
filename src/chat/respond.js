@@ -21,6 +21,7 @@ export async function buildChatReply(cleanText, userContext) {
 
   if (trigger?.kind === "empty") return SCRIPTED.empty;
   if (trigger?.kind === "egg") return sanitizeChatReply("🥚", { allowEgg: true });
+  if (trigger?.kind === "tyler") return sanitizeChatReply("tyler", { preserveCase: true });
   if (trigger?.kind === "utility") return SCRIPTED.utility;
   if (trigger?.reply) return sanitizeChatReply(trigger.reply);
   if (trigger?.kind === "stats" || isCollectionStatsQuestion(cleanText)) {

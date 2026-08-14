@@ -74,7 +74,10 @@ function fixUnbalancedQuotes(text) {
 }
 
 /** Enforce LT3BOT chat output rules. */
-export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_CHARS } = {}) {
+export function sanitizeChatReply(
+  raw,
+  { allowEgg = false, preserveCase = false, maxChars = CHAT_MAX_CHARS } = {}
+) {
   if (!raw || typeof raw !== "string") return "Say that again. I lost the signal.";
 
   let text = raw
@@ -100,7 +103,7 @@ export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_C
 
   if (text.length > 0) {
     text = fixUnbalancedQuotes(text);
-    text = capitalizeSentences(text);
+    if (!preserveCase) text = capitalizeSentences(text);
   }
 
   return text || "Say that again. I lost the signal.";

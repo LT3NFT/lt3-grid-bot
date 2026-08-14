@@ -5,6 +5,8 @@ const STATS_RE =
   /\b(how many|number of|count of|collection stats|market stats|stats|listed|listings|listing|listing count|on opensea|for sale|on the market|on sale|available to buy|owners|holders|total supply|supply|volume|sales count)\b/i;
 /** Standalone "egg" only — not questions that mention egg names. */
 const EGG_ONLY_RE = /^egg[\s.!?]*$|^🥚[\s.!?]*$/u;
+/** Standalone "tyler" only — easter egg reply. */
+const TYLER_ONLY_RE = /^tyler[\s.!?]*$/i;
 const REDIRECT_RE =
   /\b(politics|political|election|president|congress|sec\b|securities and exchange|religion|god\b|jesus|allah|war in|genocide)\b/i;
 const TRADING_RE =
@@ -50,6 +52,7 @@ export function matchScriptedTrigger(text) {
   const t = text.trim();
   if (!t) return { kind: "empty" };
   if (EGG_ONLY_RE.test(t)) return { kind: "egg" };
+  if (TYLER_ONLY_RE.test(t)) return { kind: "tyler" };
   if (GREETING_RE.test(t)) return { kind: "greeting" };
   if (REDIRECT_RE.test(t)) return { kind: "redirect", reply: SCRIPTED.redirect };
   if (UTILITY_RE.test(t)) return { kind: "utility", reply: SCRIPTED.utility };
