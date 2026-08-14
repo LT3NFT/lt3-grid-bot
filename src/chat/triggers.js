@@ -7,6 +7,20 @@ const REDIRECT_RE =
 const TRADING_RE =
   /\b(trad(e|ing)|invest(ing|ment)?|should i buy|should i sell|conviction|hold or sell|nfa|flip(ping)?)\b/i;
 
+/** Standalone greetings only — not "gm fam how are lt3s". */
+const GREETING_RE =
+  /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)[\s.!?]*$/i;
+
+const GREETING_POOL = [
+  "gm.",
+  "Gm.",
+  "gm",
+  "same.",
+  "hey.",
+  "morning.",
+  "yo.",
+];
+
 export const SCRIPTED = {
   utility:
     'It\'s simple. When u have your nft, set it as pfp. Other girls will see it and be like "wow where did u get this" and they will spam your dms.',
@@ -21,10 +35,19 @@ export function matchEgg(text) {
   return EGG_RE.test(text);
 }
 
+export function pickGreetingLine(seed = "") {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) >>> 0;
+  }
+  return GREETING_POOL[h % GREETING_POOL.length];
+}
+
 export function matchScriptedTrigger(text) {
   const t = text.trim();
   if (!t) return { kind: "empty" };
   if (EGG_RE.test(t)) return { kind: "egg" };
+  if (GREETING_RE.test(t)) return { kind: "greeting" };
   if (REDIRECT_RE.test(t)) return { kind: "redirect", reply: SCRIPTED.redirect };
   if (UTILITY_RE.test(t)) return { kind: "utility", reply: SCRIPTED.utility };
   if (FLOOR_RE.test(t)) return { kind: "floor" };

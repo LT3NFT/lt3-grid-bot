@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { CHAT_LLM_MODEL, CHAT_LLM_TIMEOUT_MS, OPENAI_API_KEY } from "../config.js";
+import { maxCharsForInput } from "./length.js";
 import {
   ASSISTANT_FALLBACK,
   buildChatSystemPrompt,
@@ -44,7 +45,9 @@ export async function generateChatReply(userText, userContext) {
 
   if (
     text &&
-    (looksLikeAssistantReply(text) || looksLikePoetrySpam(text) || text.length > 120)
+    (looksLikeAssistantReply(text) ||
+      looksLikePoetrySpam(text) ||
+      text.length > maxCharsForInput(userText) + 10)
   ) {
     text = await callModel(
       `${system}\n\nToo long or too poetic. Shorter. Plain. Based. Like a text message.`,

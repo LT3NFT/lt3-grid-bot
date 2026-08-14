@@ -1,3 +1,4 @@
+import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
   looksLikeAssistantReply,
@@ -19,6 +20,10 @@ function assert(name, cond) {
 }
 
 assert("utility trigger", matchScriptedTrigger("what is the utility")?.kind === "utility");
+assert("greeting trigger gm", matchScriptedTrigger("gm")?.kind === "greeting");
+assert("greeting trigger hey", matchScriptedTrigger("hey")?.kind === "greeting");
+assert("short input cap", maxCharsForInput("gm") <= 25);
+assert("longer input cap", maxCharsForInput("chilling and looking at lt3s i like") >= 50);
 assert("floor trigger", matchScriptedTrigger("what's the floor price")?.kind === "floor");
 assert("egg trigger", matchScriptedTrigger("egg")?.kind === "egg");
 assert("redirect trigger", matchScriptedTrigger("thoughts on the SEC")?.kind === "redirect");
