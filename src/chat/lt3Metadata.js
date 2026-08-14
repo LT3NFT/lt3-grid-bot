@@ -73,5 +73,5 @@ export function formatMetadataForPrompt(metadata) {
   if (!metadata?.traits?.length) return "";
   const lines = metadata.traits.map((t) => `- ${t.type}: ${t.value}`);
   const label = metadata.name || `LT3 #${metadata.tokenId}`;
-  return `\n\nOfficial metadata for ${label}:\n${lines.join("\n")}\nUse these exact trait names. Still describe colors and mood from what you see in the image.`;
+  return `\n\nOfficial metadata for ${label}:\n${lines.join("\n")}\nUse these exact trait names when you mention them, but lead with how the piece makes you feel or what it means to you.`;
 }

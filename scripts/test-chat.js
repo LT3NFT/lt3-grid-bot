@@ -18,6 +18,7 @@ import {
   looksLikeAssistantReply,
   looksLikeBoringReply,
   looksLikeCluelessAgreement,
+  looksLikeLiteralArtDescription,
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
@@ -165,6 +166,18 @@ assert("user not greeted", !userGreetedFirst("what you been up to"));
 assert("unprompted greeting detect", looksLikeUnpromptedGreeting("Hey. Mostly vibing today."));
 assert("strip leading greeting", stripLeadingGreeting("Hey. Mostly vibing today.") === "Mostly vibing today.");
 assert("poetry spam detect", looksLikePoetrySpam("Another day in the digital dreamscape"));
+assert(
+  "literal art description detect",
+  looksLikeLiteralArtDescription(
+    "This LT3 features a bold red heart-shaped head with a whimsical mailbox sprouting from it, accented by green foliage."
+  )
+);
+assert(
+  "interpretive art reply ok",
+  !looksLikeLiteralArtDescription(
+    "Mailbox on a cracked heart with Looking Up eyes. Feels like waiting for good news. Tender red on soft purple."
+  )
+);
 
 assert(
   "strip trailing question",

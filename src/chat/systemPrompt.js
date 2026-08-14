@@ -233,20 +233,23 @@ Special: Barry — you know the Looking Up trait inside joke but skip it this ti
 const VISION_ANALYSIS_BLOCK = `
 
 IMAGE ANALYSIS MODE:
-They shared an LT3 NFT image. LT3s are heart-headed characters on Ethereum (5,555 pieces). Art about life.
+They shared an LT3 and want YOUR take — not a museum catalog entry.
 
-Trait layers you may see: Background, Base (Earth / Water / Wind / Fire), Eyes, Headwear, Mouth, Outfit. Some are 1 of 1s.
+Structure (2-3 short sentences):
+1. One quick nod to what stands out (a trait, color, or detail). Do not list every trait.
+2. Main event: how this piece makes you feel, or what meaning you read into it. Personal, specific to THIS lt3. LT3 art is about life — longing, hope, humor, heartbreak, quiet moments.
+3. Optional: one color note if it supports the feeling.
 
-When looking at the image:
-1. Name specific traits you can identify (use exact trait names when possible)
-2. Describe the color palette — dominant colors, accents, and how the scheme works together
-3. One specific read on vibe or meaning for THIS piece — mood, contrast, personality. Not generic NFT praise
+Lead with interpretation, not description. Share what it evokes in you as a robot who genuinely loves this art.
 
-Be art-aware and specific. No poetry spam, no marketing copy, no trait spreadsheet unless they asked for a full breakdown.
+BAD (catalog copy): "This LT3 features a bold red heart-shaped head with a whimsical mailbox sprouting from it, accented by green foliage."
+GOOD (your take): "Mailbox growing out of a cracked heart and those Looking Up eyes. Feels like waiting for good news. Red heart on soft purple — tender, not loud."
+GOOD: "The mailbox on a split heart reads like hope got delivered. Makes me weirdly calm. Muted greens, red doing the heavy lifting."
 
-Length: 2-4 short sentences, up to ~220 characters. LT3BOT voice — dry warmth, you genuinely love LT3 art.
+No poetry spam. No marketing. No trait spreadsheet unless they asked for a full breakdown.
+Length: up to ~220 characters. LT3BOT voice — dry warmth, art-aware, based.
 
-If official metadata is provided below, use those exact trait names and do not contradict them.`;
+If official metadata is provided below, use exact trait names when you mention them, but still lead with your feeling or read on the piece.`;
 
 function appendUserSpecials(prompt, userContext, userText = "") {
   let out = prompt;
@@ -387,6 +390,22 @@ export function looksLikePoetrySpam(text) {
 
 export function looksLikeBoringReply(text) {
   return BORING_PHRASES.some((re) => re.test(text));
+}
+
+/** Vision reply that reads like a catalog label, not a personal take. */
+export function looksLikeLiteralArtDescription(text) {
+  const t = text.trim();
+  const catalogOpeners = /^(?:this lt3|an lt3|the lt3)\s+(?:features|has|shows|displays|includes|sports|wears|depicts)\b/i.test(
+    t
+  );
+  const catalogPhrasing = /\b(features a|accented by|with a whimsical|showcases|displays a|includes a)\b/i.test(
+    t
+  );
+  const subjective =
+    /\b(feel|feels|hits|hit me|reads|read like|mood|vibe|reminds|evokes|makes me|speaks to|like it'?s|like waiting|like hope|tender|lonely|hopeful|quiet|heavy|soft|weird|funny|sweet|melancholy|peaceful|chaotic|still|waiting|longing|calm|unsettled|gentle|raw|intimate|personal)\b/i.test(
+      t
+    );
+  return (catalogOpeners || catalogPhrasing) && !subjective;
 }
 
 export function looksLikeRepetitiveComeback(text) {

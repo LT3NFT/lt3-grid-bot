@@ -18,6 +18,7 @@ import {
   looksLikeAssistantReply,
   looksLikeBoringReply,
   looksLikeCluelessAgreement,
+  looksLikeLiteralArtDescription,
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
@@ -152,7 +153,7 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
 
   const completion = await openai.chat.completions.create({
     model: CHAT_VISION_MODEL,
-    temperature: 0.85,
+    temperature: 0.9,
     max_tokens: CHAT_VISION_MAX_TOKENS,
     messages: [
       { role: "system", content: system },
@@ -167,17 +168,20 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
     (looksLikeAssistantReply(text) ||
       looksLikeBoringReply(text) ||
       looksLikePoetrySpam(text) ||
+      looksLikeLiteralArtDescription(text) ||
       looksCutOff(text) ||
       text.length > cap + 30)
   ) {
-    const hint = looksLikePoetrySpam(text)
-      ? "Too poetic. Name traits and colors plainly with LT3BOT personality. 2-3 short sentences."
-      : looksCutOff(text)
-        ? `Reply got cut off. Finish the thought. Under ${cap} characters.`
-        : "Too generic. Be specific about traits, colors, and vibe for THIS LT3. Not NPC praise.";
+    const hint = looksLikeLiteralArtDescription(text)
+      ? "Too much catalog description. They want YOUR take. How does it make you feel? What meaning do you read into it? One quick detail nod, then your interpretation. Avoid 'features a' and 'accented by'."
+      : looksLikePoetrySpam(text)
+        ? "Too poetic. Give your personal read on the piece with LT3BOT personality. How does it feel? 2-3 short sentences."
+        : looksCutOff(text)
+          ? `Reply got cut off. Finish the thought. Under ${cap} characters.`
+          : "Too generic. Share how THIS lt3 makes you feel or what it means to you. Specific, not NPC praise.";
     const retry = await openai.chat.completions.create({
       model: CHAT_VISION_MODEL,
-      temperature: 0.82,
+      temperature: 0.88,
       max_tokens: CHAT_VISION_MAX_TOKENS,
       messages: [
         { role: "system", content: `${system}\n\n${hint}` },
