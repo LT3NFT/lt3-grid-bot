@@ -16,7 +16,7 @@ const MAX_LISTING_PAGES = 30;
 /** @typedef {{ floorEth: string|null, numOwners: number|null, sales: number|null, volume: string|null, totalSupply: number|null, listedCount: number|null, slug: string }} Lt3Stats */
 
 async function fetchListedCount(slug) {
-  let total = 0;
+  const seen = new Set();
   let next = null;
   let pages = 0;
 
@@ -26,13 +26,21 @@ async function fetchListedCount(slug) {
     const url = `https://api.opensea.io/api/v2/listings/collection/${encodeURIComponent(slug)}/all?${params}`;
     const data = await fetchJson(url, apiHeaders());
     const batch = Array.isArray(data?.listings) ? data.listings : [];
-    total += batch.filter((row) => row?.status === "ACTIVE").length;
+
+    for (const row of batch) {
+      if (row?.status !== "ACTIVE") continue;
+      const id =
+        row?.asset?.identifier ??
+        row?.protocol_data?.parameters?.offer?.[0]?.identifierOrCriteria;
+      if (id != null && String(id).length > 0) seen.add(String(id));
+    }
+
     next = typeof data?.next === "string" && data.next.length > 0 ? data.next : null;
     pages += 1;
     if (!next || batch.length === 0) break;
   }
 
-  return total;
+  return seen.size;
 }
 
 /** @returns {Promise<Lt3Stats|null>} */
@@ -59,7 +67,12 @@ export async function fetchLt3CollectionStats({ needListed = false } = {}) {
     const total = statsData?.total ?? {};
     let listedCount = cached?.listedCount ?? null;
     if (needListed && (!listedFresh || listedCount == null)) {
-      listedCount = await fetchListedCount(slug);
+      try {
+        listedCount = await fetchListedCount(slug);
+      } catch (err) {
+        console.error("[Chat] listed count failed", err);
+        listedCount = null;
+      }
     }
 
     /** @type {Lt3Stats} */
@@ -85,9 +98,11 @@ export async function fetchLt3CollectionStats({ needListed = false } = {}) {
 }
 
 const LISTED_RE =
-  /\b(how many|number of|count of|how much)?\s*(are\s+)?(listed|listings|listing|on opensea|for sale|on the market|on market)\b/i;
+  /\b(how many|number of|count of|how much)?\s*(are\s+)?(listed|listings|listing|listing count|on opensea|for sale|on the market|on market|available to buy|on sale)\b/i;
 const OWNERS_RE = /\b(how many|number of)?\s*(owners|holders|people holding|unique owners)\b/i;
-const SUPPLY_RE = /\b(total supply|supply|how many lt3s|collection size|how many nfts)\b/i;
+const SUPPLY_RE = /\b(total supply|collection size|how many nfts)\b/i;
+const SUPPLY_LT3_RE =
+  /\bhow many lt3s?\b(?!.*\b(listed|listings|listing|for sale|on opensea|on the market|on sale)\b)/i;
 const VOLUME_RE = /\b(volume|total volume|sales count|how many sales)\b/i;
 const FLOOR_IN_TEXT_RE = /\b(floor(?:\s*price)?|fp)\b/i;
 
@@ -100,7 +115,20 @@ function wantsOwners(text) {
 }
 
 function wantsSupply(text) {
-  return SUPPLY_RE.test(text);
+  return SUPPLY_RE.test(text) || SUPPLY_LT3_RE.test(text);
+}
+
+export function isCollectionStatsQuestion(text) {
+  const t = text.trim();
+  if (!t) return false;
+  return (
+    wantsListed(t) ||
+    wantsFloor(t) ||
+    wantsOwners(t) ||
+    wantsSupply(t) ||
+    wantsVolume(t) ||
+    /\b(collection stats|market stats|stats|on opensea|for sale|on the market)\b/i.test(t)
+  );
 }
 
 function wantsVolume(text) {
@@ -132,7 +160,7 @@ export async function fetchLt3StatsReply(userText) {
 
   if (onlyListed) {
     if (stats.listedCount == null) {
-      return "Couldn't pull live listing count right now. Try again in a minute.";
+      return "Couldn't pull live listing count. Check OpenSea API key on the bot.";
     }
     return `${formatCount(stats.listedCount)} LT3s listed on OpenSea right now.`;
   }

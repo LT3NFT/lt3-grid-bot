@@ -1,3 +1,4 @@
+import { isCollectionStatsQuestion } from "../src/chat/collectionStats.js";
 import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
@@ -38,6 +39,8 @@ assert("conversational cap", maxCharsForInput("what you been up to") >= 110);
 assert("longer input cap", maxCharsForInput("chilling and looking at lt3s i like") >= 50);
 assert("floor trigger", matchScriptedTrigger("what's the floor price")?.kind === "stats");
 assert("listed trigger", matchScriptedTrigger("how many are listed")?.kind === "stats");
+assert("listed lt3 trigger", matchScriptedTrigger("how many lt3s are listed")?.kind === "stats");
+assert("stats fallback detect", isCollectionStatsQuestion("how many LT3s are listed on OpenSea"));
 assert("owners trigger", matchScriptedTrigger("how many owners does lt3 have")?.kind === "stats");
 assert("egg trigger", matchScriptedTrigger("egg")?.kind === "egg");
 assert("egg trigger with period", matchScriptedTrigger("egg.")?.kind === "egg");

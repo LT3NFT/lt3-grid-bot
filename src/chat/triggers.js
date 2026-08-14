@@ -2,7 +2,7 @@ const UTILITY_RE =
   /\b(utility|utilities|use case|usecase|what(?:'s| is) lt3 for|what do i get|why (?:buy|mint|collect))\b/i;
 const FLOOR_RE = /\b(floor(?:\s*price)?|fp)\b/i;
 const STATS_RE =
-  /\b(how many|number of|count of|collection stats|market stats|stats|listed|listings|listing|on opensea|for sale|on the market|owners|holders|total supply|supply|volume|sales count)\b/i;
+  /\b(how many|number of|count of|collection stats|market stats|stats|listed|listings|listing|listing count|on opensea|for sale|on the market|on sale|available to buy|owners|holders|total supply|supply|volume|sales count)\b/i;
 /** Standalone "egg" only — not questions that mention egg names. */
 const EGG_ONLY_RE = /^egg[\s.!?]*$|^🥚[\s.!?]*$/u;
 const REDIRECT_RE =

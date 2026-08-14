@@ -1,5 +1,5 @@
 import { OPENAI_API_KEY } from "../config.js";
-import { fetchLt3StatsReply } from "./collectionStats.js";
+import { fetchLt3StatsReply, isCollectionStatsQuestion } from "./collectionStats.js";
 import { maxCharsForInput } from "./length.js";
 import { generateChatReply } from "./llm.js";
 import { sanitizeChatReply } from "./sanitize.js";
@@ -23,7 +23,7 @@ export async function buildChatReply(cleanText, userContext) {
   if (trigger?.kind === "egg") return sanitizeChatReply("🥚", { allowEgg: true });
   if (trigger?.kind === "utility") return SCRIPTED.utility;
   if (trigger?.reply) return sanitizeChatReply(trigger.reply);
-  if (trigger?.kind === "stats") {
+  if (trigger?.kind === "stats" || isCollectionStatsQuestion(cleanText)) {
     const stats = await fetchLt3StatsReply(cleanText);
     return sanitizeChatReply(stats, { maxChars: 140 });
   }
