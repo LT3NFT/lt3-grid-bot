@@ -13,6 +13,7 @@ import {
   looksLikeUnpromptedGreeting,
   userGreetedFirst,
 } from "./systemPrompt.js";
+import { looksCutOff } from "./sanitize.js";
 
 let client = null;
 
@@ -29,7 +30,7 @@ async function callModel(system, userText, { temperature = 0.88 } = {}) {
   const completion = await openai.chat.completions.create({
     model: CHAT_LLM_MODEL,
     temperature,
-    max_tokens: 65,
+    max_tokens: 80,
     messages: [
       { role: "system", content: system },
       { role: "user", content: userText.slice(0, 500) },
@@ -66,10 +67,13 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       looksLikeRepetitiveComeback(text) ||
       looksLikePoetrySpam(text) ||
       (!greetedFirst && looksLikeUnpromptedGreeting(text)) ||
+      looksCutOff(text) ||
       (isGreeting && looksTooShort(text)) ||
       text.length > cap + 15)
   ) {
-    const hint = !greetedFirst && looksLikeUnpromptedGreeting(text)
+    const hint = looksCutOff(text)
+      ? `Reply got cut off. One or two COMPLETE sentences under ${cap} characters. End on a period.`
+      : !greetedFirst && looksLikeUnpromptedGreeting(text)
       ? "You opened with a greeting but they didn't say hello. Drop the hey/hi/hello and respond to what they said."
       : welcomeBack
       ? "Too repetitive or generic. They already know you're back. React to what THEY said — dry joke, playful, warm weirdness. No 'feels good to be back' or 'was dark' lines."

@@ -8,6 +8,48 @@ function capitalizeSentences(text) {
   return capped.replace(/([.!?]\s+)([a-z])/g, (_, punct, letter) => punct + letter.toUpperCase());
 }
 
+function findLastSentenceEndInWindow(text) {
+  let bestEnd = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (".!?".includes(text[i])) {
+      const after = text.slice(i + 1);
+      if (after.length === 0 || /^\s/.test(after)) {
+        bestEnd = i;
+      }
+    }
+  }
+  return bestEnd;
+}
+
+/** Trim overlong text at a sentence boundary, never mid-clause. */
+export function trimToCompleteThought(text, maxChars) {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+
+  const window = trimmed.slice(0, maxChars);
+  const sentenceEnd = findLastSentenceEndInWindow(window);
+  if (sentenceEnd >= 12) {
+    return window.slice(0, sentenceEnd + 1).trim();
+  }
+
+  const lastSpace = window.lastIndexOf(" ");
+  if (lastSpace > 12) {
+    return `${window.slice(0, lastSpace).trim().replace(/[,;:]$/, "")}.`;
+  }
+
+  if (window.length > 1) {
+    return `${window.slice(0, Math.max(1, maxChars - 1)).trim()}.`;
+  }
+
+  return `${window.trim()}.`;
+}
+
+export function looksCutOff(text) {
+  const t = text.trim();
+  if (!t) return true;
+  return !/[.!?]["']?$/.test(t);
+}
+
 /** Enforce LT3BOT chat output rules. */
 export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_CHARS } = {}) {
   if (!raw || typeof raw !== "string") return "Say that again. I lost the signal.";
@@ -23,9 +65,14 @@ export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_C
   if (!allowEgg) text = text.replace(EMOJI_RE, "").trim();
 
   if (text.length > maxChars) {
-    const cut = text.slice(0, maxChars);
-    const lastSpace = cut.lastIndexOf(" ");
-    text = (lastSpace > 20 ? cut.slice(0, lastSpace) : cut).trim();
+    text = trimToCompleteThought(text, maxChars);
+  } else if (looksCutOff(text) && text.length > 15) {
+    const lastSpace = text.lastIndexOf(" ");
+    if (lastSpace > 12) {
+      text = `${text.slice(0, lastSpace).trim().replace(/[,;:]$/, "")}.`;
+    } else {
+      text = `${text.trim().replace(/[,;:]$/, "")}.`;
+    }
   }
 
   if (text.length > 0) {

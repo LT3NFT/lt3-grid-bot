@@ -15,7 +15,7 @@ import {
   stripTrailingQuestion,
   userGreetedFirst,
 } from "../src/chat/systemPrompt.js";
-import { sanitizeChatReply } from "../src/chat/sanitize.js";
+import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
 
 let failed = 0;
@@ -56,6 +56,19 @@ assert("strips em dashes", !noDash.includes("—") && !noDash.includes("–"));
 
 const capped = sanitizeChatReply("a".repeat(250));
 assert("caps length", capped.length <= 100);
+
+const twoSentences = sanitizeChatReply(
+  "See any LT3s you like today? Maybe one that is looking up at the sky right now",
+  { maxChars: 45 }
+);
+assert("trim ends at sentence", twoSentences.endsWith("?"));
+assert("trim not mid thought", !twoSentences.toLowerCase().includes("maybe"));
+
+const cutOff = trimToCompleteThought("Mostly vibing and running the grid for fun with moss", 40);
+assert("trim closes thought", cutOff.endsWith("."));
+
+assert("cut off detect", looksCutOff("Maybe one that is looking"));
+assert("complete detect", !looksCutOff("Maybe one that is looking."));
 
 assert("cear user detect", isCearUser("someone", "Cearwylm"));
 assert("cear nickname detect", isCearUser("cearwylm", "Cear"));
