@@ -50,6 +50,29 @@ export function looksCutOff(text) {
   return !/[.!?]["']?$/.test(t);
 }
 
+function fixUnbalancedQuotes(text) {
+  let out = text.replace(/"/g, "");
+
+  out = out.replace(/(\s)'([^']+)'/g, "$1$2");
+  out = out.replace(/^'([^']+)'/g, "$1");
+
+  const singles = [...out.matchAll(/'/g)].map((m) => m.index);
+  if (singles.length % 2 === 1) {
+    for (let i = singles.length - 1; i >= 0; i--) {
+      const idx = singles[i];
+      const prev = out[idx - 1];
+      const next = out[idx + 1];
+      const isApostrophe = prev && next && /[a-zA-Z]/.test(prev) && /[a-zA-Z]/.test(next);
+      if (!isApostrophe) {
+        out = out.slice(0, idx) + out.slice(idx + 1);
+        break;
+      }
+    }
+  }
+
+  return out.replace(/\s+/g, " ").trim();
+}
+
 /** Enforce LT3BOT chat output rules. */
 export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_CHARS } = {}) {
   if (!raw || typeof raw !== "string") return "Say that again. I lost the signal.";
@@ -76,6 +99,7 @@ export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_C
   }
 
   if (text.length > 0) {
+    text = fixUnbalancedQuotes(text);
     text = capitalizeSentences(text);
   }
 

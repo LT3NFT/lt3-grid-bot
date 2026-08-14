@@ -59,6 +59,15 @@ assert("capitalizes sentences", multiCap.startsWith("Gm") && multiCap.includes("
 const noDash = sanitizeChatReply("Sure — here's a name — hope that helps.");
 assert("strips em dashes", !noDash.includes("—") && !noDash.includes("–"));
 
+const orphanQuote = sanitizeChatReply("Call it 'Premium Suffering.");
+assert("fixes orphan open quote", !orphanQuote.includes("'") && orphanQuote.includes("Premium Suffering"));
+
+const keepsApostrophe = sanitizeChatReply("Don't mention it. It's fine.");
+assert("keeps apostrophes", keepsApostrophe.includes("Don't") && keepsApostrophe.includes("It's"));
+
+const pairedQuote = sanitizeChatReply('Try "GasFee McEggerson" for that.');
+assert("strips paired quotes", !pairedQuote.includes('"') && pairedQuote.includes("GasFee"));
+
 const capped = sanitizeChatReply("a".repeat(250));
 assert("caps length", capped.length <= 100);
 
