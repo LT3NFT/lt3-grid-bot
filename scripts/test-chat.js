@@ -1,9 +1,11 @@
 import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
+  isWelcomeBackMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
   looksLikePoetrySpam,
+  looksLikeRepetitiveComeback,
   stripTrailingQuestion,
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply } from "../src/chat/sanitize.js";
@@ -49,6 +51,11 @@ assert("not cear", !isCearUser("jacklt3", "Jack"));
 assert("assistant phrase detect", looksLikeAssistantReply("Hello. How can I assist you today?"));
 assert("boring phrase detect", looksLikeBoringReply("Hey there, good to see you around."));
 assert("boring vibe detect", looksLikeBoringReply("Just hanging out, keeping an eye on the LT3 vibe."));
+assert("comeback cliche detect", looksLikeRepetitiveComeback("Yeah, I was dark for a while. Feels good to be back."));
+assert("comeback cliche detect 2", looksLikeRepetitiveComeback("Glad to be back in the digital mix."));
+assert("welcome back detect", isWelcomeBackMessage("omg you're back"));
+assert("welcome back missed", isWelcomeBackMessage("I was so lost without you"));
+assert("welcome back thanks", isWelcomeBackMessage("thank you for being here"));
 assert("poetry spam detect", looksLikePoetrySpam("Another day in the digital dreamscape"));
 
 assert(

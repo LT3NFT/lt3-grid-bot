@@ -4,9 +4,11 @@ import { maxCharsForInput } from "./length.js";
 import {
   ASSISTANT_FALLBACK,
   buildChatSystemPrompt,
+  isWelcomeBackMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
   looksLikePoetrySpam,
+  looksLikeRepetitiveComeback,
 } from "./systemPrompt.js";
 
 let client = null;
@@ -17,13 +19,13 @@ function getClient() {
   return client;
 }
 
-async function callModel(system, userText) {
+async function callModel(system, userText, { temperature = 0.88 } = {}) {
   const openai = getClient();
   if (!openai) return null;
 
   const completion = await openai.chat.completions.create({
     model: CHAT_LLM_MODEL,
-    temperature: 0.88,
+    temperature,
     max_tokens: 65,
     messages: [
       { role: "system", content: system },
@@ -47,29 +49,42 @@ function looksTooShort(text) {
 export async function generateChatReply(userText, userContext, { isGreeting = false } = {}) {
   const system = buildChatSystemPrompt(userContext, userText);
   const cap = maxCharsForInput(userText, { isGreeting });
+  const welcomeBack = isWelcomeBackMessage(userText);
+  const temp = welcomeBack ? 0.95 : 0.88;
 
-  let text = await callModel(system, userText);
+  let text = await callModel(system, userText, { temperature: temp });
 
   if (
     text &&
     (looksLikeAssistantReply(text) ||
       looksLikeBoringReply(text) ||
+      looksLikeRepetitiveComeback(text) ||
       looksLikePoetrySpam(text) ||
       (isGreeting && looksTooShort(text)) ||
       text.length > cap + 15)
   ) {
-    const hint = isGreeting
-      ? "Too generic, too short, or too poetic. One line with robot personality — dry, introspective, a little smile. Not NPC small talk."
-      : looksLikePoetrySpam(text)
-        ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
-        : "Too generic or boring. Add dry humor or quiet introspection. Still short. Not a poem.";
-    text = await callModel(`${system}\n\n${hint}`, userText);
+    const hint = welcomeBack
+      ? "Too repetitive or generic. They already know you're back. React to what THEY said — dry joke, playful, warm weirdness. No 'feels good to be back' or 'was dark' lines."
+      : isGreeting
+        ? "Too generic, too short, or too poetic. One line with robot personality — dry, introspective, a little smile. Not NPC small talk."
+        : looksLikePoetrySpam(text)
+          ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
+          : looksLikeRepetitiveComeback(text)
+            ? "Comeback cliché. Skip the 'good to be back' script. Say something fresh and specific to their message."
+            : "Too generic or boring. Add dry humor or quiet introspection. Still short. Not a poem.";
+    text = await callModel(`${system}\n\n${hint}`, userText, { temperature: temp });
   }
 
-  if (text && (looksLikeAssistantReply(text) || looksLikeBoringReply(text))) {
+  if (
+    text &&
+    (looksLikeAssistantReply(text) ||
+      looksLikeBoringReply(text) ||
+      (welcomeBack && looksLikeRepetitiveComeback(text)))
+  ) {
     text = await callModel(
-      `${system}\n\nLast try: sound like a chill robot friend, not a help desk. One small personality beat.`,
-      userText
+      `${system}\n\nLast try: fun, specific, not a template. Match their energy without repeating your backstory.`,
+      userText,
+      { temperature: temp }
     );
   }
 
