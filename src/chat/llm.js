@@ -6,8 +6,10 @@ import {
   buildChatSystemPrompt,
   isWelcomeBackMessage,
   isLightheartedMessage,
+  isRecallQuestion,
   looksLikeAssistantReply,
   looksLikeBoringReply,
+  looksLikeCluelessAgreement,
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
@@ -64,6 +66,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
     text &&
     (looksLikeAssistantReply(text) ||
       looksLikeBoringReply(text) ||
+      looksLikeCluelessAgreement(text, userText) ||
       looksLikeRepetitiveComeback(text) ||
       looksLikePoetrySpam(text) ||
       (!greetedFirst && looksLikeUnpromptedGreeting(text)) ||
@@ -71,7 +74,9 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       (isGreeting && looksTooShort(text)) ||
       text.length > cap + 15)
   ) {
-    const hint = looksCutOff(text)
+    const hint = looksLikeCluelessAgreement(text, userText)
+      ? "You don't have memory and can't know that. Be honest — say you don't remember or only see this message. No fake yeah."
+      : looksCutOff(text)
       ? `Reply got cut off. One or two COMPLETE sentences under ${cap} characters. End on a period.`
       : !greetedFirst && looksLikeUnpromptedGreeting(text)
       ? "You opened with a greeting but they didn't say hello. Drop the hey/hi/hello and respond to what they said."
@@ -91,6 +96,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
     text &&
     (looksLikeAssistantReply(text) ||
       looksLikeBoringReply(text) ||
+      looksLikeCluelessAgreement(text, userText) ||
       (welcomeBack && looksLikeRepetitiveComeback(text)) ||
       (!greetedFirst && looksLikeUnpromptedGreeting(text)))
   ) {

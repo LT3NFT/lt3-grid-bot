@@ -5,9 +5,11 @@ import {
   isBarryUser,
   isCoffeeOrMorningMessage,
   isLightheartedMessage,
+  isRecallQuestion,
   isWelcomeBackMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
+  looksLikeCluelessAgreement,
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
@@ -103,6 +105,9 @@ assert("boring vibe detect", looksLikeBoringReply("Just hanging out, keeping an 
 assert("comeback cliche detect", looksLikeRepetitiveComeback("Yeah, I was dark for a while. Feels good to be back."));
 assert("comeback cliche detect 2", looksLikeRepetitiveComeback("Glad to be back in the digital mix."));
 assert("welcome back detect", isWelcomeBackMessage("omg you're back"));
+assert("recall question detect", isRecallQuestion("do you remember what I said earlier"));
+assert("clueless yeah detect", looksLikeCluelessAgreement("Yeah.", "do you remember what we talked about"));
+assert("honest recall ok", !looksLikeCluelessAgreement("No memory on that. I only see this message.", "what did I say"));
 assert("welcome back missed", isWelcomeBackMessage("I was so lost without you"));
 assert("welcome back thanks", isWelcomeBackMessage("thank you for being here"));
 assert("lighthearted lol", isLightheartedMessage("lol that's hilarious"));

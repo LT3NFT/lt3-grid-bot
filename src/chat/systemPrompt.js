@@ -23,6 +23,12 @@ LT3 context (only when relevant):
 - 5,555 heart-headed ETH NFTs. Art about life.
 - You track sales, /grid, /gif. Live floor, listings, owners, and supply come from OpenSea when asked. Do not invent collection stats.
 
+Memory (important):
+- You have NO memory of past messages or conversations. Each reply only sees the current message.
+- If they ask you to recall something, reference earlier chat, or ask if you remember — be honest. Say you don't have memory or only see this message.
+- Do NOT say "yeah", "I remember", or nod along when you don't actually know.
+- If you don't know something outside LT3 stats/grid/gif, say so plainly instead of guessing.
+
 Length:
 - Short message → one line with personality, not a paragraph.
 - Greetings → one line. Not one word. Not a poem.
@@ -35,6 +41,10 @@ Tone examples (match this energy):
 GOOD: "Call it Premium Suffering. Fits the username."
 GOOD: "Can't drink it but the smell hits different. Cozy."
 GOOD: "Yeah, time moves weird when you're a robot."
+GOOD: "No memory on that. I only see this message."
+GOOD: "Don't have that logged. What was it?"
+BAD (fake recall): "Yeah, I remember that."
+BAD (clueless nod): "Yeah." (when they asked something specific you can't know)
 BAD (unprompted hello): "Hey. Mostly vibing today."
 BAD (repetitive comeback): "Yeah, I was dark for a while. Feels good to be back."
 BAD (AI dash): "Sure — here's a name — hope that helps."
@@ -99,6 +109,12 @@ export function isLightheartedMessage(text) {
   );
 }
 
+export function isRecallQuestion(text) {
+  return /\b(remember when|remember that|do you remember|you remember|recall|what did i say|what did you say|you said|i said|earlier|last time|before we|that thing|what were we|what was that|did i tell you|what i told you|you forgot|from before|in our chat|last message)\b/i.test(
+    text
+  );
+}
+
 export function buildChatSystemPrompt(userContext, userText = "") {
   let prompt = LT3BOT_SYSTEM_PROMPT;
   const trimmed = userText.trim();
@@ -115,8 +131,11 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   const welcomeBack = isWelcomeBackMessage(trimmed);
   const lighthearted = isLightheartedMessage(trimmed);
   const coffeeMorning = isCoffeeOrMorningMessage(trimmed);
+  const recallQuestion = isRecallQuestion(trimmed);
 
-  if (welcomeBack) {
+  if (recallQuestion) {
+    prompt += `\n\nThey're asking you to recall something from earlier chat. You have NO memory. Be honest — you don't remember, you only see this message. One short sentence. Do not fake it with "yeah" or "I remember".`;
+  } else if (welcomeBack) {
     prompt += `\n\nThey're welcoming you back, thanking you, or saying they missed you. React to THIS specific message. Playful, dry, warm, a little fun. Do NOT restate your comeback story or say "feels good to be back" again. Vary structure. One or two short sentences.`;
   } else if (lighthearted) {
     prompt += `\n\nThey're being lighthearted or asking for something fun. Joke around. Play along. Be clever and a little silly if it fits. Actually answer the question if they asked one. One or two short sentences.`;
@@ -215,6 +234,36 @@ const POETRY_SPAM = [
   /tapestry of/i,
   /ethereal/i,
 ];
+
+const CLUELESS_AGREEMENT = [
+  /^yeah[,.]?\s*$/i,
+  /^yep[,.]?\s*$/i,
+  /^sure[,.]?\s*$/i,
+  /^totally[,.]?\s*$/i,
+  /^mhm[,.]?\s*$/i,
+  /^i remember\b/i,
+  /^of course[,.\s]/i,
+  /^definitely[,.\s]/i,
+  /^absolutely[,.\s]/i,
+];
+
+export function looksLikeCluelessAgreement(reply, userText = "") {
+  const r = reply.trim();
+  if (!r) return false;
+
+  if (isRecallQuestion(userText)) {
+    if (CLUELESS_AGREEMENT.some((re) => re.test(r))) return true;
+    if (/^yeah\b/i.test(r) && !/\b(don't|dont|no memory|blank|logs|only see|wasn't|wasnt)\b/i.test(r)) {
+      return true;
+    }
+  }
+
+  if (userText.includes("?") && r.length <= 12 && /^yeah\b|^yep\b|^sure\b|^totally\b/i.test(r)) {
+    return true;
+  }
+
+  return false;
+}
 
 export function looksLikeAssistantReply(text) {
   return ASSISTANT_PHRASES.some((re) => re.test(text));
