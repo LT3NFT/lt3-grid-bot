@@ -1,7 +1,8 @@
 const UTILITY_RE =
   /\b(utility|utilities|use case|usecase|what(?:'s| is) lt3 for|what do i get|why (?:buy|mint|collect))\b/i;
 const FLOOR_RE = /\b(floor(?:\s*price)?|fp)\b/i;
-const EGG_RE = /\begg\b/i;
+/** Standalone "egg" only — not questions that mention egg names. */
+const EGG_ONLY_RE = /^egg[\s.!?]*$|^🥚[\s.!?]*$/u;
 const REDIRECT_RE =
   /\b(politics|political|election|president|congress|sec\b|securities and exchange|religion|god\b|jesus|allah|war in|genocide)\b/i;
 const TRADING_RE =
@@ -32,7 +33,7 @@ export const SCRIPTED = {
 };
 
 export function matchEgg(text) {
-  return EGG_RE.test(text);
+  return EGG_ONLY_RE.test(text.trim());
 }
 
 export function pickGreetingFallback(seed = "") {
@@ -46,7 +47,7 @@ export function pickGreetingFallback(seed = "") {
 export function matchScriptedTrigger(text) {
   const t = text.trim();
   if (!t) return { kind: "empty" };
-  if (EGG_RE.test(t)) return { kind: "egg" };
+  if (EGG_ONLY_RE.test(t)) return { kind: "egg" };
   if (GREETING_RE.test(t)) return { kind: "greeting" };
   if (REDIRECT_RE.test(t)) return { kind: "redirect", reply: SCRIPTED.redirect };
   if (UTILITY_RE.test(t)) return { kind: "utility", reply: SCRIPTED.utility };
