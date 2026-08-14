@@ -5,6 +5,7 @@ import {
   CHAT_ENABLED,
 } from "../config.js";
 import { buildChatReply } from "./respond.js";
+import { isCearUser } from "./systemPrompt.js";
 
 function stripBotMention(content, client) {
   const botId = client.user?.id;
@@ -48,9 +49,16 @@ async function handleChatMessage(message, client) {
   if (!(await shouldRespond(message, client))) return;
 
   const cleanText = stripBotMention(message.content, client);
+  const displayName = message.member?.displayName ?? message.author.globalName ?? message.author.username;
+  const username = message.author.username;
+  const isCear = isCearUser(username, displayName);
 
   try {
-    const reply = await buildChatReply(cleanText);
+    const reply = await buildChatReply(cleanText, {
+      username,
+      displayName,
+      isCear,
+    });
     await message.reply(reply);
   } catch (err) {
     console.error("[Chat] reply failed", err);

@@ -1,3 +1,4 @@
+import { isCearUser, looksLikeAssistantReply } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
 
@@ -22,8 +23,15 @@ assert("empty trigger", matchScriptedTrigger("   ")?.kind === "empty");
 const noBang = sanitizeChatReply("Hello world! This is fine!");
 assert("strips exclamation marks", !noBang.includes("!"));
 
-const capped = sanitizeChatReply("a".repeat(200));
-assert("caps length", capped.length <= 75);
+const capped = sanitizeChatReply("a".repeat(250));
+assert("caps length", capped.length <= 200);
+
+assert("cear user detect", isCearUser("someone", "Cearwylm"));
+assert("cear nickname detect", isCearUser("cearwylm", "Cear"));
+assert("not cear", !isCearUser("jacklt3", "Jack"));
+
+assert("assistant phrase detect", looksLikeAssistantReply("Hello. How can I assist you today?"));
+assert("not assistant", !looksLikeAssistantReply("Moss on stone. Nice."));
 
 const egg = sanitizeChatReply("🥚", { allowEgg: true });
 assert("keeps egg emoji", egg.includes("🥚"));

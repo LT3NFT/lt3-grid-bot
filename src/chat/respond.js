@@ -12,7 +12,7 @@ function appendNfa(text) {
 }
 
 /** @returns {Promise<string>} */
-export async function buildChatReply(cleanText) {
+export async function buildChatReply(cleanText, userContext) {
   const trigger = matchScriptedTrigger(cleanText);
 
   if (trigger?.kind === "empty") return SCRIPTED.empty;
@@ -28,7 +28,7 @@ export async function buildChatReply(cleanText) {
 
   let llmText = null;
   try {
-    llmText = await generateChatReply(cleanText);
+    llmText = await generateChatReply(cleanText, userContext);
   } catch (err) {
     console.error("[Chat] LLM error", err);
     if (trigger?.kind === "trading") return sanitizeChatReply(SCRIPTED.tradingFallback);
