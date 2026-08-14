@@ -1,3 +1,5 @@
+import { extractTokenId, parseTraitsFromMetadata, formatMetadataForPrompt } from "../src/chat/lt3Metadata.js";
+import { getImageUrlsFromMessage } from "../src/chat/messageImages.js";
 import { isCollectionStatsQuestion } from "../src/chat/collectionStats.js";
 import { maxCharsForInput } from "../src/chat/length.js";
 import {
@@ -61,6 +63,28 @@ assert("tyler reply lowercase", sanitizeChatReply("tyler", { preserveCase: true 
 assert("redirect trigger", matchScriptedTrigger("thoughts on the SEC")?.kind === "redirect");
 assert("trading trigger", matchScriptedTrigger("any trading tips")?.kind === "trading");
 assert("empty trigger", matchScriptedTrigger("   ")?.kind === "empty");
+assert("extract token id hash", extractTokenId("check out #1234") === "1234");
+assert("extract token id lt3", extractTokenId("what do you think of LT3 456") === "456");
+assert("extract token id none", extractTokenId("nice piece") === null);
+assert("parse traits", parseTraitsFromMetadata({ traits: [{ trait_type: "Base", value: "Earth" }] }).length === 1);
+assert("metadata prompt block", formatMetadataForPrompt({ tokenId: "1", traits: [{ type: "Base", value: "Earth" }] }).includes("Earth"));
+assert("image analysis cap", maxCharsForInput("thoughts?", { isImageAnalysis: true }) >= 200);
+assert(
+  "message image attachment",
+  getImageUrlsFromMessage({
+    attachments: {
+      values: () => [{ contentType: "image/png", url: "https://cdn.discordapp.com/test.png" }],
+    },
+    embeds: [],
+  }).length === 1
+);
+assert(
+  "message image embed fallback",
+  getImageUrlsFromMessage({
+    attachments: { values: () => [] },
+    embeds: [{ image: { url: "https://cdn.discordapp.com/embed.png" } }],
+  })[0]?.includes("embed.png")
+);
 
 const noBang = sanitizeChatReply("Hello world! This is fine!");
 assert("strips exclamation marks", !noBang.includes("!"));

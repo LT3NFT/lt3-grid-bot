@@ -1,4 +1,4 @@
-import { CHAT_MAX_CHARS } from "../config.js";
+import { CHAT_MAX_CHARS, CHAT_VISION_MAX_CHARS } from "../config.js";
 
 function isConversational(text) {
   const t = text.trim();
@@ -8,7 +8,9 @@ function isConversational(text) {
 }
 
 /** Tighter cap when the user wrote something short. */
-export function maxCharsForInput(userText, { isGreeting = false } = {}) {
+export function maxCharsForInput(userText, { isGreeting = false, isImageAnalysis = false } = {}) {
+  if (isImageAnalysis) return CHAT_VISION_MAX_CHARS;
+
   const trimmed = userText.trim();
   const len = trimmed.length;
   const conversational = isConversational(trimmed);

@@ -1,7 +1,8 @@
 import { OPENAI_API_KEY } from "../config.js";
 import { fetchLt3StatsReply, isCollectionStatsQuestion } from "./collectionStats.js";
+import { extractTokenId, fetchLt3TokenMetadata } from "./lt3Metadata.js";
 import { maxCharsForInput } from "./length.js";
-import { generateChatReply } from "./llm.js";
+import { generateChatReply, generateVisionReply } from "./llm.js";
 import { sanitizeChatReply } from "./sanitize.js";
 import { stripTrailingQuestion, stripLeadingGreeting, userGreetedFirst, looksLikeUnpromptedGreeting } from "./systemPrompt.js";
 import { SCRIPTED, matchScriptedTrigger, pickGreetingFallback } from "./triggers.js";
@@ -15,11 +16,13 @@ function appendNfa(text) {
 
 /** @returns {Promise<string>} */
 export async function buildChatReply(cleanText, userContext) {
+  const imageUrls = userContext?.imageUrls ?? [];
+  const hasImages = imageUrls.length > 0;
   const trigger = matchScriptedTrigger(cleanText);
   const isGreeting = trigger?.kind === "greeting";
-  const maxChars = maxCharsForInput(cleanText, { isGreeting });
+  let maxChars = maxCharsForInput(cleanText, { isGreeting, isImageAnalysis: hasImages });
 
-  if (trigger?.kind === "empty") return SCRIPTED.empty;
+  if (trigger?.kind === "empty" && !hasImages) return SCRIPTED.empty;
   if (trigger?.kind === "egg") return sanitizeChatReply("🥚", { allowEgg: true });
   if (trigger?.kind === "tyler") return sanitizeChatReply("tyler", { preserveCase: true });
   if (trigger?.kind === "utility") return SCRIPTED.utility;
@@ -36,7 +39,14 @@ export async function buildChatReply(cleanText, userContext) {
 
   let llmText = null;
   try {
-    llmText = await generateChatReply(cleanText, userContext, { isGreeting });
+    if (hasImages) {
+      let metadata = null;
+      const tokenId = extractTokenId(cleanText);
+      if (tokenId) metadata = await fetchLt3TokenMetadata(tokenId);
+      llmText = await generateVisionReply(cleanText, userContext, { imageUrls, metadata });
+    } else {
+      llmText = await generateChatReply(cleanText, userContext, { isGreeting });
+    }
   } catch (err) {
     console.error("[Chat] LLM error", err);
     if (isGreeting) return sanitizeChatReply(pickGreetingFallback(cleanText.toLowerCase()));

@@ -1,9 +1,17 @@
 import OpenAI from "openai";
-import { CHAT_LLM_MODEL, CHAT_LLM_TIMEOUT_MS, OPENAI_API_KEY } from "../config.js";
+import {
+  CHAT_LLM_MODEL,
+  CHAT_LLM_TIMEOUT_MS,
+  CHAT_VISION_MAX_TOKENS,
+  CHAT_VISION_MODEL,
+  CHAT_VISION_TIMEOUT_MS,
+  OPENAI_API_KEY,
+} from "../config.js";
 import { maxCharsForInput } from "./length.js";
 import {
   ASSISTANT_FALLBACK,
   buildChatSystemPrompt,
+  buildVisionAnalysisPrompt,
   isWelcomeBackMessage,
   isLightheartedMessage,
   isRecallQuestion,
@@ -18,11 +26,20 @@ import {
 import { looksCutOff } from "./sanitize.js";
 
 let client = null;
+let visionClient = null;
 
 function getClient() {
   if (!OPENAI_API_KEY) return null;
   if (!client) client = new OpenAI({ apiKey: OPENAI_API_KEY, timeout: CHAT_LLM_TIMEOUT_MS });
   return client;
+}
+
+function getVisionClient() {
+  if (!OPENAI_API_KEY) return null;
+  if (!visionClient) {
+    visionClient = new OpenAI({ apiKey: OPENAI_API_KEY, timeout: CHAT_VISION_TIMEOUT_MS });
+  }
+  return visionClient;
 }
 
 async function callModel(system, userText, { temperature = 0.88 } = {}) {
@@ -108,6 +125,72 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
   }
 
   if (text && looksLikeAssistantReply(text)) text = ASSISTANT_FALLBACK;
+
+  return text;
+}
+
+/**
+ * @param {string} userText
+ * @param {object} [userContext]
+ * @param {{ imageUrls?: string[], metadata?: object|null }} [options]
+ * @returns {Promise<string|null>}
+ */
+export async function generateVisionReply(userText, userContext, { imageUrls = [], metadata = null } = {}) {
+  const openai = getVisionClient();
+  if (!openai || !imageUrls.length) return null;
+
+  const system = buildVisionAnalysisPrompt(userContext, userText, metadata);
+  const cap = maxCharsForInput(userText, { isImageAnalysis: true });
+  const userAskedQuestion = userText.includes("?");
+
+  const textPart = userText.trim() || "Analyze this LT3.";
+  /** @type {Array<{ type: string, text?: string, image_url?: { url: string, detail: string } }>} */
+  const content = [{ type: "text", text: textPart.slice(0, 800) }];
+  for (const url of imageUrls.slice(0, 1)) {
+    content.push({ type: "image_url", image_url: { url, detail: "high" } });
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: CHAT_VISION_MODEL,
+    temperature: 0.85,
+    max_tokens: CHAT_VISION_MAX_TOKENS,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content },
+    ],
+  });
+
+  let text = completion.choices?.[0]?.message?.content?.trim() || null;
+
+  if (
+    text &&
+    (looksLikeAssistantReply(text) ||
+      looksLikeBoringReply(text) ||
+      looksLikePoetrySpam(text) ||
+      looksCutOff(text) ||
+      text.length > cap + 30)
+  ) {
+    const hint = looksLikePoetrySpam(text)
+      ? "Too poetic. Name traits and colors plainly with LT3BOT personality. 2-3 short sentences."
+      : looksCutOff(text)
+        ? `Reply got cut off. Finish the thought. Under ${cap} characters.`
+        : "Too generic. Be specific about traits, colors, and vibe for THIS LT3. Not NPC praise.";
+    const retry = await openai.chat.completions.create({
+      model: CHAT_VISION_MODEL,
+      temperature: 0.82,
+      max_tokens: CHAT_VISION_MAX_TOKENS,
+      messages: [
+        { role: "system", content: `${system}\n\n${hint}` },
+        { role: "user", content },
+      ],
+    });
+    text = retry.choices?.[0]?.message?.content?.trim() || text;
+  }
+
+  if (text && looksLikeAssistantReply(text)) text = ASSISTANT_FALLBACK;
+  if (text && !userAskedQuestion && text.trim().endsWith("?")) {
+    text = text.replace(/\s*[^.!?]*\?\s*$/, ".").trim();
+  }
 
   return text;
 }

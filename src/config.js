@@ -99,6 +99,12 @@ export const CHAT_ENABLED =
 export const CHAT_MAX_CHARS = Number(process.env.CHAT_MAX_CHARS) || 100;
 export const CHAT_LLM_MODEL = String(process.env.CHAT_LLM_MODEL || "gpt-4o-mini").trim();
 export const CHAT_LLM_TIMEOUT_MS = Number(process.env.CHAT_LLM_TIMEOUT_MS) || 12_000;
+export const CHAT_VISION_MODEL = String(
+  process.env.CHAT_VISION_MODEL || process.env.CHAT_LLM_MODEL || "gpt-4o-mini"
+).trim();
+export const CHAT_VISION_MAX_CHARS = Number(process.env.CHAT_VISION_MAX_CHARS) || 220;
+export const CHAT_VISION_MAX_TOKENS = Number(process.env.CHAT_VISION_MAX_TOKENS) || 150;
+export const CHAT_VISION_TIMEOUT_MS = Number(process.env.CHAT_VISION_TIMEOUT_MS) || 25_000;
 
 function parseIdList(raw) {
   return new Set(

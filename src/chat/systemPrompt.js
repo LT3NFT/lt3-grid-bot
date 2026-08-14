@@ -1,3 +1,5 @@
+import { formatMetadataForPrompt } from "./lt3Metadata.js";
+
 /** LT3BOT personality — Discord chat only. */
 export const LT3BOT_SYSTEM_PROMPT = `You are LT3BOT, a calm based robot from the Less Than Three (LT3) NFT universe.
 
@@ -225,6 +227,73 @@ Special: Barry — you know the Looking Up trait inside joke but skip it this ti
     prompt += `\n\nUser: ${userContext.displayName ?? userContext.username}`;
   }
 
+  return prompt;
+}
+
+const VISION_ANALYSIS_BLOCK = `
+
+IMAGE ANALYSIS MODE:
+They shared an LT3 NFT image. LT3s are heart-headed characters on Ethereum (5,555 pieces). Art about life.
+
+Trait layers you may see: Background, Base (Earth / Water / Wind / Fire), Eyes, Headwear, Mouth, Outfit. Some are 1 of 1s.
+
+When looking at the image:
+1. Name specific traits you can identify (use exact trait names when possible)
+2. Describe the color palette — dominant colors, accents, and how the scheme works together
+3. One specific read on vibe or meaning for THIS piece — mood, contrast, personality. Not generic NFT praise
+
+Be art-aware and specific. No poetry spam, no marketing copy, no trait spreadsheet unless they asked for a full breakdown.
+
+Length: 2-4 short sentences, up to ~220 characters. LT3BOT voice — dry warmth, you genuinely love LT3 art.
+
+If official metadata is provided below, use those exact trait names and do not contradict them.`;
+
+function appendUserSpecials(prompt, userContext, userText = "") {
+  let out = prompt;
+  const trimmed = userText.trim();
+  const userAskedQuestion = trimmed.includes("?");
+
+  if (!userAskedQuestion && !userContext?.barryLookingUpJoke) {
+    out += `\n\nDo not end your reply with a question unless they asked one.`;
+  }
+
+  if (userContext?.isCear) {
+    out += `\n\nSpecial: Cearwylm (Cear) — old friend. Extra warm, still short and chill.`;
+  }
+  if (userContext?.isFather) {
+    out += `\n\nSpecial: Father (fatherofthr) — OG LT3 member. Warm respect, still short.`;
+  }
+  if (userContext?.isJack) {
+    out += `\n\nSpecial: Jack (jacklt3) — LT3 founder. Call him Jack. Warm respect, still short.`;
+  }
+  if (userContext?.isTyler) {
+    out += `\n\nSpecial: Tyler (tyler_lt3) — LT3 founder. Warm respect, still short.`;
+  }
+  if (userContext?.isShg) {
+    if (userContext?.shgUseNickname) {
+      out += `\n\nSpecial: superhighgasfees — founder. This message only you can call him ${userContext.shgNickname} if it fits.`;
+    } else {
+      out += `\n\nSpecial: superhighgasfees — LT3 founder. Warm respect, still short.`;
+    }
+  }
+  if (userContext?.barryLookingUpJoke) {
+    out += `\n\nSpecial: Barry — Looking Up trait inside joke if it fits naturally. One line.`;
+  }
+  if (userContext?.displayName || userContext?.username) {
+    out += `\n\nUser: ${userContext.displayName ?? userContext.username}`;
+  }
+  return out;
+}
+
+/**
+ * @param {object} [userContext]
+ * @param {string} [userText]
+ * @param {{ tokenId?: string, name?: string|null, traits?: Array<{ type: string, value: string }> }|null} [metadata]
+ */
+export function buildVisionAnalysisPrompt(userContext, userText = "", metadata = null) {
+  let prompt = LT3BOT_SYSTEM_PROMPT + VISION_ANALYSIS_BLOCK;
+  if (metadata) prompt += formatMetadataForPrompt(metadata);
+  prompt = appendUserSpecials(prompt, userContext, userText);
   return prompt;
 }
 

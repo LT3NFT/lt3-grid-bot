@@ -5,6 +5,7 @@ import {
   CHAT_ENABLED,
 } from "../config.js";
 import { buildChatReply } from "./respond.js";
+import { getImageUrlsFromMessage } from "./messageImages.js";
 import {
   isCearUser,
   isBarryUser,
@@ -58,7 +59,10 @@ async function shouldRespond(message, client) {
 async function handleChatMessage(message, client) {
   if (!(await shouldRespond(message, client))) return;
 
-  const cleanText = stripBotMention(message.content, client);
+  const imageUrls = getImageUrlsFromMessage(message);
+  const cleanText =
+    stripBotMention(message.content, client) ||
+    (imageUrls.length ? "What do you think of this LT3?" : "");
   const displayName = message.member?.displayName ?? message.author.globalName ?? message.author.username;
   const username = message.author.username;
   const isCear = isCearUser(username, displayName);
@@ -84,6 +88,7 @@ async function handleChatMessage(message, client) {
       barryLookingUpJoke,
       shgUseNickname,
       shgNickname,
+      imageUrls,
     });
     await message.reply(reply);
   } catch (err) {
@@ -97,7 +102,7 @@ export function wireChat(client) {
     return;
   }
 
-  console.log("[Chat] enabled — responds to @mentions and replies to bot messages.");
+  console.log("[Chat] enabled — responds to @mentions and replies; analyzes attached LT3 images.");
 
   client.on(Events.MessageCreate, (message) => {
     void handleChatMessage(message, client);
