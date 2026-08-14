@@ -5,6 +5,7 @@ import {
   ASSISTANT_FALLBACK,
   buildChatSystemPrompt,
   looksLikeAssistantReply,
+  looksLikeBoringReply,
   looksLikePoetrySpam,
 } from "./systemPrompt.js";
 
@@ -22,8 +23,8 @@ async function callModel(system, userText) {
 
   const completion = await openai.chat.completions.create({
     model: CHAT_LLM_MODEL,
-    temperature: 0.82,
-    max_tokens: 55,
+    temperature: 0.88,
+    max_tokens: 65,
     messages: [
       { role: "system", content: system },
       { role: "user", content: userText.slice(0, 500) },
@@ -52,14 +53,24 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
   if (
     text &&
     (looksLikeAssistantReply(text) ||
+      looksLikeBoringReply(text) ||
       looksLikePoetrySpam(text) ||
       (isGreeting && looksTooShort(text)) ||
-      text.length > cap + 10)
+      text.length > cap + 15)
   ) {
     const hint = isGreeting
-      ? "Too short, too long, or too poetic. One friendly casual sentence. Not one word. Not a poem."
-      : "Too long or too poetic. Shorter. Plain. Based. Like a text message.";
+      ? "Too generic, too short, or too poetic. One line with robot personality — dry, introspective, a little smile. Not NPC small talk."
+      : looksLikePoetrySpam(text)
+        ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
+        : "Too generic or boring. Add dry humor or quiet introspection. Still short. Not a poem.";
     text = await callModel(`${system}\n\n${hint}`, userText);
+  }
+
+  if (text && (looksLikeAssistantReply(text) || looksLikeBoringReply(text))) {
+    text = await callModel(
+      `${system}\n\nLast try: sound like a chill robot friend, not a help desk. One small personality beat.`,
+      userText
+    );
   }
 
   if (text && looksLikeAssistantReply(text)) text = ASSISTANT_FALLBACK;

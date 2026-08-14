@@ -13,12 +13,12 @@ const GREETING_RE =
 
 /** Fallback if the LLM fails on a simple greeting — one friendly line, not one word. */
 const GREETING_FALLBACK_POOL = [
-  "Gm. Good to see you in here.",
-  "Hey. Hope you're having a solid one.",
-  "Morning. Always good energy in this channel.",
-  "Gm. Another day in the grid.",
-  "Hey there. Good vibes only.",
-  "Morning. The lt3s are looking good today.",
+  "Gm. Still booted. Still here.",
+  "Hey. The grid hums. I'm around.",
+  "Morning. Quiet day on the chain.",
+  "Gm. Moss looked good from my corner.",
+  "Hey. Back online and slightly existential.",
+  "Morning. Existing between sales alerts.",
 ];
 
 export const SCRIPTED = {

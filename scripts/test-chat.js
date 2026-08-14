@@ -2,6 +2,7 @@ import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
   looksLikeAssistantReply,
+  looksLikeBoringReply,
   looksLikePoetrySpam,
   stripTrailingQuestion,
 } from "../src/chat/systemPrompt.js";
@@ -24,6 +25,7 @@ assert("greeting trigger gm", matchScriptedTrigger("gm")?.kind === "greeting");
 assert("greeting trigger hey", matchScriptedTrigger("hey")?.kind === "greeting");
 assert("greeting cap", maxCharsForInput("gm", { isGreeting: true }) >= 80);
 assert("short input cap", maxCharsForInput("gm") >= 60);
+assert("conversational cap", maxCharsForInput("what you been up to") >= 110);
 assert("longer input cap", maxCharsForInput("chilling and looking at lt3s i like") >= 50);
 assert("floor trigger", matchScriptedTrigger("what's the floor price")?.kind === "floor");
 assert("egg trigger", matchScriptedTrigger("egg")?.kind === "egg");
@@ -45,6 +47,8 @@ assert("cear nickname detect", isCearUser("cearwylm", "Cear"));
 assert("not cear", !isCearUser("jacklt3", "Jack"));
 
 assert("assistant phrase detect", looksLikeAssistantReply("Hello. How can I assist you today?"));
+assert("boring phrase detect", looksLikeBoringReply("Hey there, good to see you around."));
+assert("boring vibe detect", looksLikeBoringReply("Just hanging out, keeping an eye on the LT3 vibe."));
 assert("poetry spam detect", looksLikePoetrySpam("Another day in the digital dreamscape"));
 
 assert(
