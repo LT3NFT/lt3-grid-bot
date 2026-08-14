@@ -18,6 +18,8 @@ export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_C
     .trim();
 
   text = text.replace(/!/g, ".");
+  text = text.replace(/\s*[—–]\s*/g, ". ");
+  text = text.replace(/\.\s+\./g, ".");
   if (!allowEgg) text = text.replace(EMOJI_RE, "").trim();
 
   if (text.length > maxChars) {

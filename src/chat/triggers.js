@@ -25,7 +25,7 @@ const GREETING_FALLBACK_POOL = [
 export const SCRIPTED = {
   utility:
     'It\'s simple. When u have your nft, set it as pfp. Other girls will see it and be like "wow where did u get this" and they will spam your dms.',
-  redirect: "Not my lane. Art, community, growth — ask me about those.",
+  redirect: "Not my lane. Art, community, growth. Ask me about those.",
   tradingFallback:
     "Research builds conviction. Hold what you believe in. NFA.",
   noApiKey: "Chat brain offline. Grid and gif still work.",

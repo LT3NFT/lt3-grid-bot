@@ -1,6 +1,7 @@
 import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
+  isLightheartedMessage,
   isWelcomeBackMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
@@ -44,6 +45,9 @@ assert("strips exclamation marks", !noBang.includes("!"));
 const multiCap = sanitizeChatReply("gm. good to see you.");
 assert("capitalizes sentences", multiCap.startsWith("Gm") && multiCap.includes(". Good"));
 
+const noDash = sanitizeChatReply("Sure — here's a name — hope that helps.");
+assert("strips em dashes", !noDash.includes("—") && !noDash.includes("–"));
+
 const capped = sanitizeChatReply("a".repeat(250));
 assert("caps length", capped.length <= 100);
 
@@ -59,6 +63,8 @@ assert("comeback cliche detect 2", looksLikeRepetitiveComeback("Glad to be back 
 assert("welcome back detect", isWelcomeBackMessage("omg you're back"));
 assert("welcome back missed", isWelcomeBackMessage("I was so lost without you"));
 assert("welcome back thanks", isWelcomeBackMessage("thank you for being here"));
+assert("lighthearted lol", isLightheartedMessage("lol that's hilarious"));
+assert("lighthearted name ask", isLightheartedMessage("what would a clever egg name be for superhighgasfees"));
 assert("poetry spam detect", looksLikePoetrySpam("Another day in the digital dreamscape"));
 
 assert(

@@ -5,6 +5,7 @@ import {
   ASSISTANT_FALLBACK,
   buildChatSystemPrompt,
   isWelcomeBackMessage,
+  isLightheartedMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
   looksLikePoetrySpam,
@@ -50,7 +51,8 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
   const system = buildChatSystemPrompt(userContext, userText);
   const cap = maxCharsForInput(userText, { isGreeting });
   const welcomeBack = isWelcomeBackMessage(userText);
-  const temp = welcomeBack ? 0.95 : 0.88;
+  const lighthearted = isLightheartedMessage(userText);
+  const temp = welcomeBack || lighthearted ? 0.95 : 0.88;
 
   let text = await callModel(system, userText, { temperature: temp });
 
