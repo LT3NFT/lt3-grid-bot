@@ -4,6 +4,11 @@ import {
   isCearUser,
   isBarryUser,
   isFatherUser,
+  isShgUser,
+  isJackUser,
+  isTylerUser,
+  pickShgNickname,
+  shouldUseShgNickname,
   isCoffeeOrMorningMessage,
   isLightheartedMessage,
   isRecallQuestion,
@@ -96,6 +101,15 @@ assert("not barry", !isBarryUser("jacklt3", "Jack"));
 assert("father username detect", isFatherUser("fatherofthr", "Father"));
 assert("father display detect", isFatherUser("someone", "Father"));
 assert("not father", !isFatherUser("jacklt3", "Jack"));
+assert("shg username detect", isShgUser("superhighgasfees"));
+assert("jack founder detect", isJackUser("jacklt3", "JackLT3"));
+assert("tyler founder detect", isTylerUser("tyler_lt3"));
+assert("shg nickname pick", pickShgNickname("test") === "SHG" || pickShgNickname("test") === "Soup");
+assert(
+  "shg nickname deterministic",
+  shouldUseShgNickname("gm", "superhighgasfees", "SHG") ===
+    shouldUseShgNickname("gm", "superhighgasfees", "SHG")
+);
 assert("barry joke whats up sometimes", shouldBarryLookingUpJoke("what's up", "Barry6067", "Barry") !== undefined);
 assert(
   "barry joke deterministic",

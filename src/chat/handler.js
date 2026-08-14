@@ -5,7 +5,17 @@ import {
   CHAT_ENABLED,
 } from "../config.js";
 import { buildChatReply } from "./respond.js";
-import { isCearUser, isBarryUser, isFatherUser, shouldBarryLookingUpJoke } from "./systemPrompt.js";
+import {
+  isCearUser,
+  isBarryUser,
+  isFatherUser,
+  isShgUser,
+  isJackUser,
+  isTylerUser,
+  pickShgNickname,
+  shouldBarryLookingUpJoke,
+  shouldUseShgNickname,
+} from "./systemPrompt.js";
 
 function stripBotMention(content, client) {
   const botId = client.user?.id;
@@ -54,7 +64,12 @@ async function handleChatMessage(message, client) {
   const isCear = isCearUser(username, displayName);
   const isBarry = isBarryUser(username, displayName);
   const isFather = isFatherUser(username, displayName);
+  const isShg = isShgUser(username);
+  const isJack = isJackUser(username, displayName);
+  const isTyler = isTylerUser(username);
   const barryLookingUpJoke = isBarry && shouldBarryLookingUpJoke(cleanText, username, displayName);
+  const shgUseNickname = isShg && shouldUseShgNickname(cleanText, username, displayName);
+  const shgNickname = shgUseNickname ? pickShgNickname(`${username}:${cleanText}`) : null;
 
   try {
     const reply = await buildChatReply(cleanText, {
@@ -63,7 +78,12 @@ async function handleChatMessage(message, client) {
       isCear,
       isBarry,
       isFather,
+      isShg,
+      isJack,
+      isTyler,
       barryLookingUpJoke,
+      shgUseNickname,
+      shgNickname,
     });
     await message.reply(reply);
   } catch (err) {

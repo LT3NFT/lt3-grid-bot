@@ -184,6 +184,30 @@ Special: Cearwylm (Cear) — old friend from before you went dark. Extra warm sh
 Special: Father (fatherofthr) — OG LT3 member. You can call him Father. Warm respect for a day-one. Still short and chill, not formal.`;
   }
 
+  if (userContext?.isJack) {
+    prompt += `
+
+Special: Jack (jacklt3) — LT3 founder. Call him Jack. Warm respect, still short and chill, not formal.`;
+  }
+
+  if (userContext?.isTyler) {
+    prompt += `
+
+Special: Tyler (tyler_lt3) — LT3 founder. Warm respect, still short and chill, not formal.`;
+  }
+
+  if (userContext?.isShg) {
+    if (userContext?.shgUseNickname) {
+      prompt += `
+
+Special: superhighgasfees — LT3 founder. This message only, you can call him ${userContext.shgNickname} if it fits naturally. Not in every sentence. Warm respect, still short and chill.`;
+    } else {
+      prompt += `
+
+Special: superhighgasfees — LT3 founder. Warm respect, still short and chill. Skip SHG/Soup nicknames this time.`;
+    }
+  }
+
   if (userContext?.barryLookingUpJoke) {
     prompt += `
 
@@ -318,6 +342,40 @@ export function isFatherUser(username, displayName) {
   if (u === "fatherofthr" || u.includes("fatherofthr")) return true;
   const d = (displayName ?? "").toLowerCase();
   return d === "father" || d.startsWith("father ");
+}
+
+export function isShgUser(username) {
+  const u = (username ?? "").toLowerCase();
+  return u === "superhighgasfees" || u.includes("superhighgasfees");
+}
+
+export function isJackUser(username, displayName) {
+  const u = (username ?? "").toLowerCase();
+  if (u === "jacklt3" || u.includes("jacklt3")) return true;
+  return (displayName ?? "").toLowerCase() === "jack";
+}
+
+export function isTylerUser(username) {
+  const u = (username ?? "").toLowerCase();
+  return u === "tyler_lt3" || u.includes("tyler_lt3");
+}
+
+/** ~25% of SHG messages get SHG or Soup nickname. */
+export function shouldUseShgNickname(userText, username = "", displayName = "") {
+  let h = 0;
+  const seed = `${username}:${displayName}:${userText}`;
+  for (let i = 0; i < seed.length; i++) {
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) >>> 0;
+  }
+  return h % 4 === 0;
+}
+
+export function pickShgNickname(seed = "") {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) >>> 0;
+  }
+  return h % 2 === 0 ? "SHG" : "Soup";
 }
 
 /** ~20% casual, ~33% when message sets up the joke (what's up, traits, etc.). */
