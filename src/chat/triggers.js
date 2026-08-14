@@ -1,6 +1,8 @@
 const UTILITY_RE =
   /\b(utility|utilities|use case|usecase|what(?:'s| is) lt3 for|what do i get|why (?:buy|mint|collect))\b/i;
 const FLOOR_RE = /\b(floor(?:\s*price)?|fp)\b/i;
+const STATS_RE =
+  /\b(how many|number of|count of|collection stats|market stats|stats|listed|listings|listing|on opensea|for sale|on the market|owners|holders|total supply|supply|volume|sales count)\b/i;
 /** Standalone "egg" only — not questions that mention egg names. */
 const EGG_ONLY_RE = /^egg[\s.!?]*$|^🥚[\s.!?]*$/u;
 const REDIRECT_RE =
@@ -51,7 +53,7 @@ export function matchScriptedTrigger(text) {
   if (GREETING_RE.test(t)) return { kind: "greeting" };
   if (REDIRECT_RE.test(t)) return { kind: "redirect", reply: SCRIPTED.redirect };
   if (UTILITY_RE.test(t)) return { kind: "utility", reply: SCRIPTED.utility };
-  if (FLOOR_RE.test(t)) return { kind: "floor" };
+  if (FLOOR_RE.test(t) || STATS_RE.test(t)) return { kind: "stats" };
   if (TRADING_RE.test(t)) return { kind: "trading" };
   return null;
 }
