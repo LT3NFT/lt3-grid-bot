@@ -3,6 +3,7 @@ import { maxCharsForInput } from "../src/chat/length.js";
 import {
   isCearUser,
   isBarryUser,
+  isFatherUser,
   isCoffeeOrMorningMessage,
   isLightheartedMessage,
   isRecallQuestion,
@@ -92,6 +93,9 @@ assert("not cear", !isCearUser("jacklt3", "Jack"));
 assert("barry username detect", isBarryUser("Barry6067", "Barry"));
 assert("barry display detect", isBarryUser("someone", "Barry"));
 assert("not barry", !isBarryUser("jacklt3", "Jack"));
+assert("father username detect", isFatherUser("fatherofthr", "Father"));
+assert("father display detect", isFatherUser("someone", "Father"));
+assert("not father", !isFatherUser("jacklt3", "Jack"));
 assert("barry joke whats up sometimes", shouldBarryLookingUpJoke("what's up", "Barry6067", "Barry") !== undefined);
 assert(
   "barry joke deterministic",

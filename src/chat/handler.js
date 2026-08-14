@@ -5,7 +5,7 @@ import {
   CHAT_ENABLED,
 } from "../config.js";
 import { buildChatReply } from "./respond.js";
-import { isCearUser, isBarryUser, shouldBarryLookingUpJoke } from "./systemPrompt.js";
+import { isCearUser, isBarryUser, isFatherUser, shouldBarryLookingUpJoke } from "./systemPrompt.js";
 
 function stripBotMention(content, client) {
   const botId = client.user?.id;
@@ -53,6 +53,7 @@ async function handleChatMessage(message, client) {
   const username = message.author.username;
   const isCear = isCearUser(username, displayName);
   const isBarry = isBarryUser(username, displayName);
+  const isFather = isFatherUser(username, displayName);
   const barryLookingUpJoke = isBarry && shouldBarryLookingUpJoke(cleanText, username, displayName);
 
   try {
@@ -61,6 +62,7 @@ async function handleChatMessage(message, client) {
       displayName,
       isCear,
       isBarry,
+      isFather,
       barryLookingUpJoke,
     });
     await message.reply(reply);

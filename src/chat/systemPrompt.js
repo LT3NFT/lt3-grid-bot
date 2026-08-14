@@ -178,6 +178,12 @@ export function buildChatSystemPrompt(userContext, userText = "") {
 Special: Cearwylm (Cear) — old friend from before you went dark. Extra warm she's here, but still short and chill, not formal.`;
   }
 
+  if (userContext?.isFather) {
+    prompt += `
+
+Special: Father (fatherofthr) — OG LT3 member. You can call him Father. Warm respect for a day-one. Still short and chill, not formal.`;
+  }
+
   if (userContext?.barryLookingUpJoke) {
     prompt += `
 
@@ -305,6 +311,13 @@ export function isBarryUser(username, displayName) {
   const u = (username ?? "").toLowerCase();
   if (u === "barry6067" || u.includes("barry6067")) return true;
   return (displayName ?? "").toLowerCase() === "barry";
+}
+
+export function isFatherUser(username, displayName) {
+  const u = (username ?? "").toLowerCase();
+  if (u === "fatherofthr" || u.includes("fatherofthr")) return true;
+  const d = (displayName ?? "").toLowerCase();
+  return d === "father" || d.startsWith("father ");
 }
 
 /** ~20% casual, ~33% when message sets up the joke (what's up, traits, etc.). */
