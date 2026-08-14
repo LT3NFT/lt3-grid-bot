@@ -4,6 +4,7 @@ import {
   ASSISTANT_FALLBACK,
   buildChatSystemPrompt,
   looksLikeAssistantReply,
+  looksLikePoetrySpam,
 } from "./systemPrompt.js";
 
 let client = null;
@@ -14,41 +15,44 @@ function getClient() {
   return client;
 }
 
-/**
- * @param {string} userText
- * @param {{ username?: string, displayName?: string, isCear?: boolean }} [userContext]
- * @returns {Promise<string|null>}
- */
-export async function generateChatReply(userText, userContext) {
+async function callModel(system, userText) {
   const openai = getClient();
   if (!openai) return null;
 
-  const system = buildChatSystemPrompt(userContext);
-
   const completion = await openai.chat.completions.create({
     model: CHAT_LLM_MODEL,
-    temperature: 0.92,
-    max_tokens: 120,
+    temperature: 0.82,
+    max_tokens: 55,
     messages: [
       { role: "system", content: system },
       { role: "user", content: userText.slice(0, 500) },
     ],
   });
 
-  let text = completion.choices?.[0]?.message?.content?.trim() || null;
-  if (text && looksLikeAssistantReply(text)) {
-    const retry = await openai.chat.completions.create({
-      model: CHAT_LLM_MODEL,
-      temperature: 0.95,
-      max_tokens: 120,
-      messages: [
-        { role: "system", content: `${system}\n\nYour last reply sounded like a help desk. Try again — weird, calm, LT3BOT.` },
-        { role: "user", content: userText.slice(0, 500) },
-      ],
-    });
-    text = retry.choices?.[0]?.message?.content?.trim() || ASSISTANT_FALLBACK;
-    if (looksLikeAssistantReply(text)) text = ASSISTANT_FALLBACK;
+  return completion.choices?.[0]?.message?.content?.trim() || null;
+}
+
+/**
+ * @param {string} userText
+ * @param {{ username?: string, displayName?: string, isCear?: boolean }} [userContext]
+ * @returns {Promise<string|null>}
+ */
+export async function generateChatReply(userText, userContext) {
+  const system = buildChatSystemPrompt(userContext, userText);
+
+  let text = await callModel(system, userText);
+
+  if (
+    text &&
+    (looksLikeAssistantReply(text) || looksLikePoetrySpam(text) || text.length > 120)
+  ) {
+    text = await callModel(
+      `${system}\n\nToo long or too poetic. Shorter. Plain. Based. Like a text message.`,
+      userText
+    );
   }
+
+  if (text && looksLikeAssistantReply(text)) text = ASSISTANT_FALLBACK;
 
   return text;
 }

@@ -1,4 +1,9 @@
-import { isCearUser, looksLikeAssistantReply } from "../src/chat/systemPrompt.js";
+import {
+  isCearUser,
+  looksLikeAssistantReply,
+  looksLikePoetrySpam,
+  stripTrailingQuestion,
+} from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
 
@@ -24,14 +29,23 @@ const noBang = sanitizeChatReply("Hello world! This is fine!");
 assert("strips exclamation marks", !noBang.includes("!"));
 
 const capped = sanitizeChatReply("a".repeat(250));
-assert("caps length", capped.length <= 200);
+assert("caps length", capped.length <= 100);
 
 assert("cear user detect", isCearUser("someone", "Cearwylm"));
 assert("cear nickname detect", isCearUser("cearwylm", "Cear"));
 assert("not cear", !isCearUser("jacklt3", "Jack"));
 
 assert("assistant phrase detect", looksLikeAssistantReply("Hello. How can I assist you today?"));
-assert("not assistant", !looksLikeAssistantReply("Moss on stone. Nice."));
+assert("poetry spam detect", looksLikePoetrySpam("Another day in the digital dreamscape"));
+
+assert(
+  "strip trailing question",
+  stripTrailingQuestion("Nice pick. What draws your eye?", false) === "Nice pick."
+);
+assert(
+  "keep question if user asked",
+  stripTrailingQuestion("Floor is 0.04. Want more?", true).includes("?")
+);
 
 const egg = sanitizeChatReply("🥚", { allowEgg: true });
 assert("keeps egg emoji", egg.includes("🥚"));

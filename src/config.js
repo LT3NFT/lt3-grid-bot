@@ -96,7 +96,7 @@ export const OPENSEA_API_KEY = String(process.env.OPENSEA_API_KEY || "").trim();
 export const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || "").trim();
 export const CHAT_ENABLED =
   String(process.env.CHAT_ENABLED || "").trim() !== "false" && Boolean(OPENAI_API_KEY);
-export const CHAT_MAX_CHARS = Number(process.env.CHAT_MAX_CHARS) || 200;
+export const CHAT_MAX_CHARS = Number(process.env.CHAT_MAX_CHARS) || 100;
 export const CHAT_LLM_MODEL = String(process.env.CHAT_LLM_MODEL || "gpt-4o-mini").trim();
 export const CHAT_LLM_TIMEOUT_MS = Number(process.env.CHAT_LLM_TIMEOUT_MS) || 12_000;
 

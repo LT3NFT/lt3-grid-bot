@@ -2,6 +2,7 @@ import { OPENAI_API_KEY } from "../config.js";
 import { fetchLt3FloorReply } from "./floor.js";
 import { generateChatReply } from "./llm.js";
 import { sanitizeChatReply } from "./sanitize.js";
+import { stripTrailingQuestion } from "./systemPrompt.js";
 import { SCRIPTED, matchScriptedTrigger } from "./triggers.js";
 
 function appendNfa(text) {
@@ -41,6 +42,7 @@ export async function buildChatReply(cleanText, userContext) {
   }
 
   let reply = sanitizeChatReply(llmText);
+  reply = stripTrailingQuestion(reply, cleanText.includes("?"));
   if (trigger?.kind === "trading") reply = sanitizeChatReply(appendNfa(reply));
   return reply;
 }
