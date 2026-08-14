@@ -2,6 +2,12 @@ import { CHAT_MAX_CHARS } from "../config.js";
 
 const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{1F1E6}-\u{1F1FF}]/gu;
 
+function capitalizeSentences(text) {
+  if (!text) return text;
+  const capped = text.charAt(0).toUpperCase() + text.slice(1);
+  return capped.replace(/([.!?]\s+)([a-z])/g, (_, punct, letter) => punct + letter.toUpperCase());
+}
+
 /** Enforce LT3BOT chat output rules. */
 export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_CHARS } = {}) {
   if (!raw || typeof raw !== "string") return "Say that again. I lost the signal.";
@@ -21,7 +27,7 @@ export function sanitizeChatReply(raw, { allowEgg = false, maxChars = CHAT_MAX_C
   }
 
   if (text.length > 0) {
-    text = text.charAt(0).toUpperCase() + text.slice(1);
+    text = capitalizeSentences(text);
   }
 
   return text || "Say that again. I lost the signal.";

@@ -22,7 +22,8 @@ function assert(name, cond) {
 assert("utility trigger", matchScriptedTrigger("what is the utility")?.kind === "utility");
 assert("greeting trigger gm", matchScriptedTrigger("gm")?.kind === "greeting");
 assert("greeting trigger hey", matchScriptedTrigger("hey")?.kind === "greeting");
-assert("short input cap", maxCharsForInput("gm") <= 25);
+assert("greeting cap", maxCharsForInput("gm", { isGreeting: true }) >= 80);
+assert("short input cap", maxCharsForInput("gm") >= 60);
 assert("longer input cap", maxCharsForInput("chilling and looking at lt3s i like") >= 50);
 assert("floor trigger", matchScriptedTrigger("what's the floor price")?.kind === "floor");
 assert("egg trigger", matchScriptedTrigger("egg")?.kind === "egg");
@@ -32,6 +33,9 @@ assert("empty trigger", matchScriptedTrigger("   ")?.kind === "empty");
 
 const noBang = sanitizeChatReply("Hello world! This is fine!");
 assert("strips exclamation marks", !noBang.includes("!"));
+
+const multiCap = sanitizeChatReply("gm. good to see you.");
+assert("capitalizes sentences", multiCap.startsWith("Gm") && multiCap.includes(". Good"));
 
 const capped = sanitizeChatReply("a".repeat(250));
 assert("caps length", capped.length <= 100);

@@ -4,7 +4,7 @@ import { maxCharsForInput } from "./length.js";
 import { generateChatReply } from "./llm.js";
 import { sanitizeChatReply } from "./sanitize.js";
 import { stripTrailingQuestion } from "./systemPrompt.js";
-import { SCRIPTED, matchScriptedTrigger, pickGreetingLine } from "./triggers.js";
+import { SCRIPTED, matchScriptedTrigger, pickGreetingFallback } from "./triggers.js";
 
 function appendNfa(text) {
   const lower = text.toLowerCase();
@@ -16,11 +16,11 @@ function appendNfa(text) {
 /** @returns {Promise<string>} */
 export async function buildChatReply(cleanText, userContext) {
   const trigger = matchScriptedTrigger(cleanText);
-  const maxChars = maxCharsForInput(cleanText);
+  const isGreeting = trigger?.kind === "greeting";
+  const maxChars = maxCharsForInput(cleanText, { isGreeting });
 
   if (trigger?.kind === "empty") return SCRIPTED.empty;
   if (trigger?.kind === "egg") return sanitizeChatReply("🥚", { allowEgg: true });
-  if (trigger?.kind === "greeting") return pickGreetingLine(cleanText.toLowerCase());
   if (trigger?.kind === "utility") return SCRIPTED.utility;
   if (trigger?.reply) return sanitizeChatReply(trigger.reply);
   if (trigger?.kind === "floor") {
@@ -28,18 +28,23 @@ export async function buildChatReply(cleanText, userContext) {
     return sanitizeChatReply(floor, { allowEgg: false });
   }
 
-  if (!OPENAI_API_KEY) return SCRIPTED.noApiKey;
+  if (!OPENAI_API_KEY) {
+    if (isGreeting) return sanitizeChatReply(pickGreetingFallback(cleanText.toLowerCase()));
+    return SCRIPTED.noApiKey;
+  }
 
   let llmText = null;
   try {
-    llmText = await generateChatReply(cleanText, userContext);
+    llmText = await generateChatReply(cleanText, userContext, { isGreeting });
   } catch (err) {
     console.error("[Chat] LLM error", err);
+    if (isGreeting) return sanitizeChatReply(pickGreetingFallback(cleanText.toLowerCase()));
     if (trigger?.kind === "trading") return sanitizeChatReply(SCRIPTED.tradingFallback);
     return sanitizeChatReply("Static in the line. Try again.");
   }
 
   if (!llmText) {
+    if (isGreeting) return sanitizeChatReply(pickGreetingFallback(cleanText.toLowerCase()));
     if (trigger?.kind === "trading") return sanitizeChatReply(SCRIPTED.tradingFallback);
     return sanitizeChatReply("Didn't catch that. One more time.");
   }

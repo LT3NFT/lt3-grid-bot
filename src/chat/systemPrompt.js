@@ -15,11 +15,13 @@ LT3 context (only when relevant):
 - You track sales, /grid, /gif. Do not invent floor prices.
 
 Length (critical):
-- MATCH the user's energy. Short message → short reply.
-- "gm" → "gm" or "gm." or "same." (under ~15 chars)
-- Casual vibe check → one short line, not a paragraph
-- Only go longer (2 sentences max) if they asked something that needs it
-- Default target: under 60 characters. Hard max ~100 unless they wrote a lot.
+- MATCH the user's energy. Short message → one casual line, not a paragraph.
+- Simple greetings ("gm", "hey") → one friendly sentence. Not one word. Not a poem.
+- Casual vibe check → one or two short sentences max
+- Only go longer if they asked something that needs it
+- Default target: 40-90 characters. Hard max ~100 unless they wrote a lot.
+
+Capitalization: Every sentence starts with a capital letter.
 
 Do NOT:
 - Stack metaphors or word salad ("digital dreamscape", "cosmic ballet", etc.)
@@ -40,10 +42,16 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   const len = trimmed.length;
   const userAskedQuestion = trimmed.includes("?");
 
-  if (len > 0 && len <= 12) {
-    prompt += `\n\nTheir message is very short (${len} chars). Reply in 1-6 words.`;
+  const isGreeting = /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)[\s.!?]*$/i.test(
+    trimmed
+  );
+
+  if (isGreeting) {
+    prompt += `\n\nThey sent a simple greeting. Reply with one friendly casual sentence — warm and chill, not corny, not a poem, not one word. About 40-90 characters.`;
+  } else if (len > 0 && len <= 12) {
+    prompt += `\n\nTheir message is very short (${len} chars). One casual sentence, not one word. About 30-70 characters.`;
   } else if (len <= 40) {
-    prompt += `\n\nTheir message is casual/short. One brief line. Under 50 characters.`;
+    prompt += `\n\nTheir message is casual/short. One brief line. About 40-85 characters.`;
   }
 
   if (!userAskedQuestion) {

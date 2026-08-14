@@ -38,8 +38,14 @@ async function callModel(system, userText) {
  * @param {{ username?: string, displayName?: string, isCear?: boolean }} [userContext]
  * @returns {Promise<string|null>}
  */
-export async function generateChatReply(userText, userContext) {
+function looksTooShort(text) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  return words.length <= 2 || text.trim().length < 25;
+}
+
+export async function generateChatReply(userText, userContext, { isGreeting = false } = {}) {
   const system = buildChatSystemPrompt(userContext, userText);
+  const cap = maxCharsForInput(userText, { isGreeting });
 
   let text = await callModel(system, userText);
 
@@ -47,12 +53,13 @@ export async function generateChatReply(userText, userContext) {
     text &&
     (looksLikeAssistantReply(text) ||
       looksLikePoetrySpam(text) ||
-      text.length > maxCharsForInput(userText) + 10)
+      (isGreeting && looksTooShort(text)) ||
+      text.length > cap + 10)
   ) {
-    text = await callModel(
-      `${system}\n\nToo long or too poetic. Shorter. Plain. Based. Like a text message.`,
-      userText
-    );
+    const hint = isGreeting
+      ? "Too short, too long, or too poetic. One friendly casual sentence. Not one word. Not a poem."
+      : "Too long or too poetic. Shorter. Plain. Based. Like a text message.";
+    text = await callModel(`${system}\n\n${hint}`, userText);
   }
 
   if (text && looksLikeAssistantReply(text)) text = ASSISTANT_FALLBACK;

@@ -11,14 +11,14 @@ const TRADING_RE =
 const GREETING_RE =
   /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)[\s.!?]*$/i;
 
-const GREETING_POOL = [
-  "gm.",
-  "Gm.",
-  "gm",
-  "same.",
-  "hey.",
-  "morning.",
-  "yo.",
+/** Fallback if the LLM fails on a simple greeting — one friendly line, not one word. */
+const GREETING_FALLBACK_POOL = [
+  "Gm. Good to see you in here.",
+  "Hey. Hope you're having a solid one.",
+  "Morning. Always good energy in this channel.",
+  "Gm. Another day in the grid.",
+  "Hey there. Good vibes only.",
+  "Morning. The lt3s are looking good today.",
 ];
 
 export const SCRIPTED = {
@@ -35,12 +35,12 @@ export function matchEgg(text) {
   return EGG_RE.test(text);
 }
 
-export function pickGreetingLine(seed = "") {
+export function pickGreetingFallback(seed = "") {
   let h = 0;
   for (let i = 0; i < seed.length; i++) {
     h = (Math.imul(31, h) + seed.charCodeAt(i)) >>> 0;
   }
-  return GREETING_POOL[h % GREETING_POOL.length];
+  return GREETING_FALLBACK_POOL[h % GREETING_FALLBACK_POOL.length];
 }
 
 export function matchScriptedTrigger(text) {
