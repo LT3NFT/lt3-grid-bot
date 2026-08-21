@@ -50,17 +50,32 @@ async function fetchImageBuffer(url, timeoutMs) {
 
 function urlsForAttempt(nft, options) {
   const sourceUrls = options.preferHighRes
-    ? getHighResNftImageUrlCandidates(nft)
+    ? [
+        ...getHighResNftImageUrlCandidates(nft),
+        ...(options.allowLowResUrls ? getNftImageUrlCandidates(nft) : []),
+      ]
     : getNftImageUrlCandidates(nft);
+
+  const seen = new Set();
+  const deduped = [];
+  for (const url of sourceUrls) {
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    deduped.push(url);
+  }
+
   let ranked = rankImageUrls(
-    expandImageUrlCandidates(sourceUrls, {
+    expandImageUrlCandidates(deduped, {
       upgradeHighRes: options.preferHighRes,
       targetEdge: options.maxLongEdge ?? 2048,
     })
   );
-  if (options.preferHighRes) {
-    ranked = ranked.filter((url) => !isLikelyLowResImageUrl(url));
+
+  if (options.preferHighRes && !options.allowLowResUrls) {
+    const strict = ranked.filter((url) => !isLikelyLowResImageUrl(url));
+    if (strict.length) ranked = strict;
   }
+
   if (options.preferCdn) {
     const cdn = ranked.filter(isCdnUrl);
     if (cdn.length) return cdn;
@@ -220,7 +235,7 @@ async function tryUrlsForNft(nft, displayName, options) {
 
 async function loadBestImageForNft(nft, displayName, options) {
   let sourceNft = nft;
-  if (options.requireAlchemyFirst) {
+  if (options.preferAlchemyFirst) {
     const refreshed = await fetchNftMetadata(nft);
     if (refreshed) {
       sourceNft = {
@@ -231,32 +246,38 @@ async function loadBestImageForNft(nft, displayName, options) {
     }
   }
 
-  let image = await tryUrlsForNft(sourceNft, displayName, options);
-  if (image) return image;
+  if (options.preferHighRes) {
+    const highRes = await tryUrlsForNft(sourceNft, displayName, {
+      ...options,
+      allowLowResUrls: false,
+    });
+    if (highRes) return highRes;
 
-  if (options.skipMetadataRefresh || options.requireAlchemyFirst) {
-    if (options.requireAlchemyFirst) {
-      throw new Error(`Could not load a full-size image for ${displayName}.`);
-    }
-    return createPlaceholderImage(displayName);
-  }
-
-  const refreshed = await fetchNftMetadata(nft);
-  if (refreshed) {
-    image = await tryUrlsForNft(
-      { ...nft, ...refreshed, tokenId: getNftTokenId(nft) ?? refreshed.tokenId },
-      displayName,
-      {
-        ...options,
-        preferCdn: false,
-        maxUrlAttempts: 10,
-      }
-    );
+    const fallback = await tryUrlsForNft(sourceNft, displayName, {
+      ...options,
+      allowLowResUrls: true,
+      minSourceEdge: 0,
+    });
+    if (fallback) return fallback;
+  } else {
+    const image = await tryUrlsForNft(sourceNft, displayName, options);
     if (image) return image;
   }
 
-  if (options.requireHighRes) {
-    throw new Error(`Could not load a full-size image for ${displayName}.`);
+  if (!options.preferAlchemyFirst && !options.skipMetadataRefresh) {
+    const refreshed = await fetchNftMetadata(nft);
+    if (refreshed) {
+      const image = await tryUrlsForNft(
+        { ...nft, ...refreshed, tokenId: getNftTokenId(nft) ?? refreshed.tokenId },
+        displayName,
+        {
+          ...options,
+          preferCdn: false,
+          maxUrlAttempts: 10,
+        }
+      );
+      if (image) return image;
+    }
   }
 
   return createPlaceholderImage(displayName);
@@ -291,8 +312,8 @@ export async function loadNftImages(nfts, options = {}) {
     jpegQuality: options.jpegQuality ?? 88,
     highQuality: options.highQuality ?? false,
     minSourceEdge: options.minSourceEdge ?? 0,
-    requireAlchemyFirst: options.requireAlchemyFirst ?? false,
-    requireHighRes: options.requireHighRes ?? false,
+    preferAlchemyFirst: options.preferAlchemyFirst ?? false,
+    allowLowResUrls: options.allowLowResUrls ?? false,
   };
 
   return mapWithConcurrency(nfts, concurrency, async (nft) => {

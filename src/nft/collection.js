@@ -56,8 +56,7 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
     jpegQuality: isTraitSingle ? TRAIT_SINGLE_JPEG_QUALITY : 88,
     highQuality: isTraitSingle,
     minSourceEdge: isTraitSingle ? 900 : 0,
-    requireAlchemyFirst: isTraitSingle,
-    requireHighRes: isTraitSingle,
+    preferAlchemyFirst: isTraitSingle,
   });
   return { address, display, count: images.length, images };
 }
