@@ -5,20 +5,76 @@ const IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs/",
 ];
 
-export function expandImageUrlCandidates(urls) {
+export function upgradeImageUrlForHighRes(url, targetEdge = 2048) {
+  if (!url || typeof url !== "string") return null;
+
+  let upgraded = url
+    .replace(/\/c_thumb,[^/]*\//i, "/")
+    .replace(/\bc_fill,[^/]*\//i, "/")
+    .replace(/\bw_\d+\b/g, `w_${targetEdge}`)
+    .replace(/\bh_\d+\b/g, `h_${targetEdge}`);
+
+  try {
+    const parsed = new URL(upgraded);
+    for (const key of ["w", "width"]) {
+      if (parsed.searchParams.has(key)) {
+        parsed.searchParams.set(key, String(targetEdge));
+      }
+    }
+    upgraded = parsed.toString();
+  } catch {
+    // keep string replacements only
+  }
+
+  return upgraded !== url ? upgraded : null;
+}
+
+export function isLikelyLowResImageUrl(url) {
+  if (!url || typeof url !== "string") return true;
+  const lc = url.toLowerCase();
+  if (/\b(thumb|thumbnail|preview|small|c_thumb)\b/.test(lc)) return true;
+
+  const widthToken = lc.match(/\bw_(\d+)\b/);
+  if (widthToken && Number(widthToken[1]) < 900) return true;
+
+  const heightToken = lc.match(/\bh_(\d+)\b/);
+  if (heightToken && Number(heightToken[1]) < 900) return true;
+
+  try {
+    const parsed = new URL(url);
+    for (const key of ["w", "width"]) {
+      const value = Number(parsed.searchParams.get(key));
+      if (Number.isFinite(value) && value > 0 && value < 900) return true;
+    }
+  } catch {
+    // ignore
+  }
+
+  return false;
+}
+
+export function expandImageUrlCandidates(urls, options = {}) {
   const out = [];
   const seen = new Set();
+  const targetEdge = options.targetEdge ?? 2048;
+
+  const push = (candidate) => {
+    if (!candidate || seen.has(candidate)) return;
+    seen.add(candidate);
+    out.push(candidate);
+  };
+
   for (const raw of urls) {
     const url = normalizeMediaUrl(raw);
     if (!url) continue;
 
-    const push = (candidate) => {
-      if (!candidate || seen.has(candidate)) return;
-      seen.add(candidate);
-      out.push(candidate);
-    };
-
-    push(url);
+    if (options.upgradeHighRes) {
+      const upgraded = upgradeImageUrlForHighRes(url, targetEdge);
+      if (upgraded) push(upgraded);
+      if (!isLikelyLowResImageUrl(url)) push(url);
+    } else {
+      push(url);
+    }
 
     const ipfsMatch = url.match(/\/ipfs\/(.+)$/i);
     if (ipfsMatch) {

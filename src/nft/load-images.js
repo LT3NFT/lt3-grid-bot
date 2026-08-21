@@ -6,6 +6,7 @@ import {
   getNftContractAddressLc,
   getNftImageUrlCandidates,
   getNftTokenId,
+  isLikelyLowResImageUrl,
 } from "./normalize.js";
 
 function isCdnUrl(url) {
@@ -47,23 +48,18 @@ async function fetchImageBuffer(url, timeoutMs) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-function isLikelyLowResUrl(url) {
-  const lc = url.toLowerCase();
-  if (/\b(thumb|thumbnail|preview|small)\b/.test(lc)) return true;
-  const widthMatch = lc.match(/\bw_(\d+)\b/);
-  if (widthMatch && Number(widthMatch[1]) < 900) return true;
-  const heightMatch = lc.match(/\bh_(\d+)\b/);
-  if (heightMatch && Number(heightMatch[1]) < 900) return true;
-  return false;
-}
-
 function urlsForAttempt(nft, options) {
   const sourceUrls = options.preferHighRes
     ? getHighResNftImageUrlCandidates(nft)
     : getNftImageUrlCandidates(nft);
-  let ranked = rankImageUrls(expandImageUrlCandidates(sourceUrls));
+  let ranked = rankImageUrls(
+    expandImageUrlCandidates(sourceUrls, {
+      upgradeHighRes: options.preferHighRes,
+      targetEdge: options.maxLongEdge ?? 2048,
+    })
+  );
   if (options.preferHighRes) {
-    ranked = ranked.filter((url) => !isLikelyLowResUrl(url));
+    ranked = ranked.filter((url) => !isLikelyLowResImageUrl(url));
   }
   if (options.preferCdn) {
     const cdn = ranked.filter(isCdnUrl);
@@ -101,9 +97,16 @@ async function loadImageFromUrl(
   timeoutMs,
   maxLongEdge = 1200,
   jpegQuality = 88,
-  highQuality = false
+  highQuality = false,
+  minSourceEdge = 0
 ) {
   const buffer = await fetchImageBuffer(url, timeoutMs);
+  const inputMeta = await sharp(buffer).metadata();
+  const sourceEdge = Math.max(inputMeta.width ?? 0, inputMeta.height ?? 0);
+  if (highQuality && minSourceEdge > 0 && sourceEdge > 0 && sourceEdge < minSourceEdge) {
+    throw new Error(`Source too small (${sourceEdge}px)`);
+  }
+
   let pipeline = sharp(buffer).resize(maxLongEdge, maxLongEdge, {
     fit: "inside",
     withoutEnlargement: true,
@@ -130,7 +133,8 @@ async function tryLoadFromUrl(
   preferCdn,
   fastImageFetch,
   jpegQuality = 88,
-  highQuality = false
+  highQuality = false,
+  minSourceEdge = 0
 ) {
   const timeoutMs = timeoutForUrl(url, preferCdn, fastImageFetch);
   const retries = fastImageFetch ? 1 : 2;
@@ -142,7 +146,8 @@ async function tryLoadFromUrl(
         timeoutMs,
         maxLongEdge,
         jpegQuality,
-        highQuality
+        highQuality,
+        minSourceEdge
       );
     } catch (err) {
       if (attempt === retries - 1) throw err;
@@ -203,7 +208,8 @@ async function tryUrlsForNft(nft, displayName, options) {
         options.preferCdn,
         options.fastImageFetch,
         options.jpegQuality ?? 88,
-        options.highQuality ?? false
+        options.highQuality ?? false,
+        options.minSourceEdge ?? 0
       );
     } catch {
       // try next candidate
@@ -213,21 +219,44 @@ async function tryUrlsForNft(nft, displayName, options) {
 }
 
 async function loadBestImageForNft(nft, displayName, options) {
-  let image = await tryUrlsForNft(nft, displayName, options);
+  let sourceNft = nft;
+  if (options.requireAlchemyFirst) {
+    const refreshed = await fetchNftMetadata(nft);
+    if (refreshed) {
+      sourceNft = {
+        ...nft,
+        ...refreshed,
+        tokenId: getNftTokenId(nft) ?? refreshed.tokenId,
+      };
+    }
+  }
+
+  let image = await tryUrlsForNft(sourceNft, displayName, options);
   if (image) return image;
 
-  if (options.skipMetadataRefresh) {
+  if (options.skipMetadataRefresh || options.requireAlchemyFirst) {
+    if (options.requireAlchemyFirst) {
+      throw new Error(`Could not load a full-size image for ${displayName}.`);
+    }
     return createPlaceholderImage(displayName);
   }
 
   const refreshed = await fetchNftMetadata(nft);
   if (refreshed) {
-    image = await tryUrlsForNft(refreshed, displayName, {
-      ...options,
-      preferCdn: false,
-      maxUrlAttempts: 10,
-    });
+    image = await tryUrlsForNft(
+      { ...nft, ...refreshed, tokenId: getNftTokenId(nft) ?? refreshed.tokenId },
+      displayName,
+      {
+        ...options,
+        preferCdn: false,
+        maxUrlAttempts: 10,
+      }
+    );
     if (image) return image;
+  }
+
+  if (options.requireHighRes) {
+    throw new Error(`Could not load a full-size image for ${displayName}.`);
   }
 
   return createPlaceholderImage(displayName);
@@ -261,6 +290,9 @@ export async function loadNftImages(nfts, options = {}) {
     fastImageFetch: options.fastImageFetch ?? false,
     jpegQuality: options.jpegQuality ?? 88,
     highQuality: options.highQuality ?? false,
+    minSourceEdge: options.minSourceEdge ?? 0,
+    requireAlchemyFirst: options.requireAlchemyFirst ?? false,
+    requireHighRes: options.requireHighRes ?? false,
   };
 
   return mapWithConcurrency(nfts, concurrency, async (nft) => {

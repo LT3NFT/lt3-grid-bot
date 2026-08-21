@@ -48,13 +48,16 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
           : isGif
             ? gifDecodeLongEdgeForCount(nfts.length)
             : 1200,
-    maxUrlAttempts: isTraitSingle ? 8 : isTraitGrid ? 3 : isGrid ? 4 : isGif ? 4 : 10,
+    maxUrlAttempts: isTraitSingle ? 10 : isTraitGrid ? 3 : isGrid ? 4 : isGif ? 4 : 10,
     preferCdn: isGrid || isGif || isTraitGrid,
     preferHighRes: isTraitSingle,
     skipMetadataRefresh: isGif || isTraitGrid,
     fastImageFetch: isTraitGrid,
     jpegQuality: isTraitSingle ? TRAIT_SINGLE_JPEG_QUALITY : 88,
     highQuality: isTraitSingle,
+    minSourceEdge: isTraitSingle ? 900 : 0,
+    requireAlchemyFirst: isTraitSingle,
+    requireHighRes: isTraitSingle,
   });
   return { address, display, count: images.length, images };
 }
