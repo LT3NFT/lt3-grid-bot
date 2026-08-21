@@ -29,7 +29,7 @@ import {
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
-import { isTraitGridRequest } from "../src/chat/traitGrid.js";
+import { isTraitGridRequest, isTraitSingleRequest } from "../src/chat/traitGrid.js";
 
 let failed = 0;
 
@@ -201,6 +201,15 @@ assert(
 assert("trait grid request show headwear", isTraitGridRequest("show me LT3s with Ski headwear"));
 assert("trait grid not plain chat", !isTraitGridRequest("what do you think of LT3 art"));
 assert("trait grid not floor", !isTraitGridRequest("what's the floor price"));
+assert("trait grid grid keyword", isTraitGridRequest("grid venus fly trap headwear"));
+assert(
+  "trait single venus fly trap lt3",
+  isTraitSingleRequest("show me a venus fly trap lt3")
+);
+assert("trait single casual headwear", isTraitSingleRequest("show me ski headwear"));
+assert("trait single random phrasing", isTraitSingleRequest("random venus fly trap"));
+assert("trait single not grid plural", !isTraitSingleRequest("show me some LT3s with Venus Fly Trap"));
+assert("trait single not plain chat", !isTraitSingleRequest("what do you think of LT3 art"));
 
 if (failed) {
   console.error(`\n${failed} test(s) failed`);

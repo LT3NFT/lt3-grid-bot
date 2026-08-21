@@ -5,7 +5,7 @@ import {
   CHAT_ENABLED,
 } from "../config.js";
 import { buildChatReply } from "./respond.js";
-import { buildTraitGridReplyQueued, isTraitGridRequest } from "./traitGrid.js";
+import { buildTraitGridReplyQueued, buildTraitSingleReplyQueued, isTraitGridRequest, isTraitSingleRequest } from "./traitGrid.js";
 import { getImageUrlsFromMessage } from "./messageImages.js";
 import {
   isCearUser,
@@ -77,18 +77,28 @@ async function handleChatMessage(message, client) {
   const shgNickname = shgUseNickname ? pickShgNickname(`${username}:${cleanText}`) : null;
 
   try {
-    if (isTraitGridRequest(cleanText) && imageUrls.length === 0) {
+    if (imageUrls.length === 0) {
       const pending = await message.react("⏳").catch(() => null);
       try {
-        const gridReply = await buildTraitGridReplyQueued(cleanText);
-        if (gridReply) {
-          await message.reply({ content: gridReply.caption, files: [gridReply.attachment] });
-          return;
+        if (isTraitGridRequest(cleanText)) {
+          const gridReply = await buildTraitGridReplyQueued(cleanText);
+          if (gridReply) {
+            await message.reply({ content: gridReply.caption, files: [gridReply.attachment] });
+            return;
+          }
+        }
+
+        if (isTraitSingleRequest(cleanText)) {
+          const singleReply = await buildTraitSingleReplyQueued(cleanText);
+          if (singleReply) {
+            await message.reply({ content: singleReply.caption, files: [singleReply.attachment] });
+            return;
+          }
         }
       } catch (err) {
-        console.error("[Chat] trait grid failed", err);
+        console.error("[Chat] trait pull failed", err);
         const msg =
-          err instanceof Error && err.message ? err.message : "Could not build that trait grid.";
+          err instanceof Error && err.message ? err.message : "Could not pull that LT3.";
         await message.reply(msg);
         return;
       } finally {
@@ -122,7 +132,7 @@ export function wireChat(client) {
     return;
   }
 
-  console.log("[Chat] enabled — @mentions and replies; trait grid requests; LT3 image analysis.");
+  console.log("[Chat] enabled — @mentions and replies; trait pulls and grids; LT3 image analysis.");
 
   client.on(Events.MessageCreate, (message) => {
     void handleChatMessage(message, client);
