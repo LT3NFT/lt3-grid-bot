@@ -83,6 +83,11 @@ export function renderConcurrencyForCount(count) {
   return 10;
 }
 
+/** Fixed 3×3 trait grids — smaller decode + export keeps Discord previews snappy. */
+export const TRAIT_GRID_DECODE_LONG_EDGE = Number(process.env.TRAIT_GRID_DECODE_LONG_EDGE) || 640;
+export const TRAIT_GRID_EXPORT_LONG_EDGE = Number(process.env.TRAIT_GRID_EXPORT_LONG_EDGE) || 1800;
+export const TRAIT_GRID_IMAGE_CONCURRENCY = Number(process.env.TRAIT_GRID_IMAGE_CONCURRENCY) || 9;
+
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 export const DISCORD_APPLICATION_ID = String(process.env.DISCORD_APPLICATION_ID || "").trim();
 export const DISCORD_GUILD_ID = String(process.env.DISCORD_GUILD_ID || "").trim();

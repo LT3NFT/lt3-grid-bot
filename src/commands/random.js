@@ -40,7 +40,7 @@ export async function handleRandomCommand(interaction) {
   }
 
   const trait = interaction.options.getString("trait", true);
-  const stopProgress = startProgressUpdates(interaction, "Building your trait grid");
+  const stopProgress = startProgressUpdates(interaction, "Building your trait grid", 8_000);
 
   try {
     await runGridJob(

@@ -21,7 +21,7 @@ async function fitImageToCell(imageBuffer, cellW, cellH, fitMode) {
     .toBuffer();
 }
 
-export async function renderLayoutToBuffer(layout, images, width, height) {
+export async function renderLayoutToBuffer(layout, images, width, height, options = {}) {
   const fitMode = layout.fit || "contain";
   const rects = layout.rects.slice().sort((a, b) => a.imageIndex - b.imageIndex);
   const w = Math.max(1, Math.round(width));
@@ -57,6 +57,23 @@ export async function renderLayoutToBuffer(layout, images, width, height) {
   });
 
   let pipeline = canvas.composite(composites.filter(Boolean));
+
+  if (options.preferJpeg) {
+    let quality = options.jpegQuality ?? 88;
+    while (quality >= 72) {
+      const jpg = await pipeline.clone().jpeg({ quality, mozjpeg: true }).toBuffer();
+      if (jpg.length <= MAX_DISCORD_FILE_BYTES) {
+        return { buffer: jpg, extension: "jpg", mime: "image/jpeg" };
+      }
+      quality -= 8;
+    }
+
+    const scaled = await sharp(await pipeline.png({ compressionLevel: 1 }).toBuffer())
+      .resize(Math.max(1, Math.floor(w * 0.85)), Math.max(1, Math.floor(h * 0.85)))
+      .jpeg({ quality: 85, mozjpeg: true })
+      .toBuffer();
+    return { buffer: scaled, extension: "jpg", mime: "image/jpeg" };
+  }
 
   let png = await pipeline.png({ compressionLevel: 1 }).toBuffer();
   if (png.length <= MAX_DISCORD_FILE_BYTES) {

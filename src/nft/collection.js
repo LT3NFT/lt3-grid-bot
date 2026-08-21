@@ -4,6 +4,8 @@ import {
   imageFetchConcurrencyForCount,
   imageFetchConcurrencyForGif,
   MAX_NFT_COUNT,
+  TRAIT_GRID_DECODE_LONG_EDGE,
+  TRAIT_GRID_IMAGE_CONCURRENCY,
 } from "../config.js";
 import { fetchAllLt3NftsForOwner } from "./fetch.js";
 import { loadNftImages } from "./load-images.js";
@@ -25,18 +27,24 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
 
   const isGrid = options.purpose === "grid";
   const isGif = options.purpose === "gif";
+  const isTraitGrid = options.purpose === "trait-grid";
   const images = await loadNftImages(nfts, {
-    concurrency: isGif
-      ? imageFetchConcurrencyForGif(nfts.length)
-      : imageFetchConcurrencyForCount(nfts.length),
-    maxLongEdge: isGrid
-      ? gridDecodeLongEdgeForCount(nfts.length)
+    concurrency: isTraitGrid
+      ? TRAIT_GRID_IMAGE_CONCURRENCY
       : isGif
-        ? gifDecodeLongEdgeForCount(nfts.length)
-        : 1200,
-    maxUrlAttempts: isGrid ? 4 : isGif ? 4 : 10,
-    preferCdn: isGrid || isGif,
-    skipMetadataRefresh: isGif,
+        ? imageFetchConcurrencyForGif(nfts.length)
+        : imageFetchConcurrencyForCount(nfts.length),
+    maxLongEdge: isTraitGrid
+      ? TRAIT_GRID_DECODE_LONG_EDGE
+      : isGrid
+        ? gridDecodeLongEdgeForCount(nfts.length)
+        : isGif
+          ? gifDecodeLongEdgeForCount(nfts.length)
+          : 1200,
+    maxUrlAttempts: isTraitGrid ? 3 : isGrid ? 4 : isGif ? 4 : 10,
+    preferCdn: isGrid || isGif || isTraitGrid,
+    skipMetadataRefresh: isGif || isTraitGrid,
+    fastImageFetch: isTraitGrid,
   });
   return { address, display, count: images.length, images };
 }

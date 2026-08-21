@@ -1,4 +1,4 @@
-import { gridTimeoutForCount } from "./config.js";
+import { gridTimeoutForCount, TRAIT_GRID_EXPORT_LONG_EDGE } from "./config.js";
 import {
   fetchAllLt3NftsForOwner,
   loadLt3CollectionFromNfts,
@@ -10,7 +10,21 @@ import { pickBestLayout } from "./layout/rank.js";
 import { renderLayoutToBuffer } from "./render/composite.js";
 import { resolveWalletInput, withTimeout } from "./util/wallet-resolve.js";
 
-async function buildGridFromCollection(collection) {
+const TRAIT_GRID_3X3_LAYOUT = {
+  id: "grid-3x3-trait",
+  name: "3x3",
+  aspectRatio: 1,
+  fit: "cover",
+  rects: Array.from({ length: TRAIT_GRID_SIZE }, (_, index) => ({
+    x: (index % 3) / 3,
+    y: Math.floor(index / 3) / 3,
+    w: 1 / 3,
+    h: 1 / 3,
+    imageIndex: index,
+  })),
+};
+
+async function buildGridFromCollection(collection, renderOptions = {}) {
   const { address, display, count, images } = collection;
   const layouts = generateLayouts(images);
   const layout = pickBestLayout(layouts);
@@ -19,7 +33,13 @@ async function buildGridFromCollection(collection) {
   }
 
   const dims = getExportDimensionsForLayout(layout, images);
-  const rendered = await renderLayoutToBuffer(layout, images, dims.width, dims.height);
+  const rendered = await renderLayoutToBuffer(
+    layout,
+    images,
+    dims.width,
+    dims.height,
+    renderOptions
+  );
 
   return {
     address,
@@ -30,6 +50,29 @@ async function buildGridFromCollection(collection) {
     height: dims.height,
     ...rendered,
     filename: `lt3-grid-${dims.width}x${dims.height}.${rendered.extension}`,
+  };
+}
+
+async function buildTraitGridFromCollection(collection) {
+  const { address, display, count, images } = collection;
+  const edge = TRAIT_GRID_EXPORT_LONG_EDGE;
+  const rendered = await renderLayoutToBuffer(
+    TRAIT_GRID_3X3_LAYOUT,
+    images,
+    edge,
+    edge,
+    { preferJpeg: true, jpegQuality: 88 }
+  );
+
+  return {
+    address,
+    display,
+    count,
+    layout: TRAIT_GRID_3X3_LAYOUT,
+    width: edge,
+    height: edge,
+    ...rendered,
+    filename: `lt3-trait-grid-${edge}x${edge}.${rendered.extension}`,
   };
 }
 
@@ -57,7 +100,9 @@ export async function buildGridForWalletInputWithTimeout(rawInput) {
 export async function buildGridForTraitMatch(traitType, traitValue) {
   const nfts = await pickRandomNftsForTraitGrid(traitType, traitValue, TRAIT_GRID_SIZE);
   const label = `${traitType}: ${traitValue}`;
-  const collection = await loadLt3CollectionFromNfts(nfts, "trait-grid", label, { purpose: "grid" });
-  const result = await buildGridFromCollection(collection);
+  const collection = await loadLt3CollectionFromNfts(nfts, "trait-grid", label, {
+    purpose: "trait-grid",
+  });
+  const result = await buildTraitGridFromCollection(collection);
   return { ...result, traitType, traitValue, count: TRAIT_GRID_SIZE };
 }

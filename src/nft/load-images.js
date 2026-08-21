@@ -55,7 +55,18 @@ function urlsForAttempt(nft, options) {
   return ranked;
 }
 
-function timeoutForUrl(url, preferCdn) {
+function timeoutForUrl(url, preferCdn, fastImageFetch) {
+  if (fastImageFetch) {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      if (host.includes("alchemy.com") || host.includes("cloudinary.com")) return 5_000;
+      if (host.includes("ipfs") || host === "dweb.link" || host.includes("pinata")) return 8_000;
+    } catch {
+      // ignore
+    }
+    return 6_000;
+  }
+
   try {
     const host = new URL(url).hostname.toLowerCase();
     if (host.includes("ipfs") || host === "dweb.link" || host.includes("pinata")) {
@@ -82,13 +93,14 @@ async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200)
   };
 }
 
-async function tryLoadFromUrl(url, displayName, maxLongEdge, preferCdn) {
-  const timeoutMs = timeoutForUrl(url, preferCdn);
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+async function tryLoadFromUrl(url, displayName, maxLongEdge, preferCdn, fastImageFetch) {
+  const timeoutMs = timeoutForUrl(url, preferCdn, fastImageFetch);
+  const retries = fastImageFetch ? 1 : 2;
+  for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
       return await loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge);
     } catch (err) {
-      if (attempt === 1) throw err;
+      if (attempt === retries - 1) throw err;
       await new Promise((resolve) => setTimeout(resolve, preferCdn ? 100 : 400));
     }
   }
@@ -139,7 +151,13 @@ async function tryUrlsForNft(nft, displayName, options) {
   const maxAttempts = options.maxUrlAttempts ?? 10;
   for (const url of urls.slice(0, maxAttempts)) {
     try {
-      return await tryLoadFromUrl(url, displayName, options.maxLongEdge ?? 1200, options.preferCdn);
+      return await tryLoadFromUrl(
+        url,
+        displayName,
+        options.maxLongEdge ?? 1200,
+        options.preferCdn,
+        options.fastImageFetch
+      );
     } catch {
       // try next candidate
     }
@@ -192,6 +210,7 @@ export async function loadNftImages(nfts, options = {}) {
     maxUrlAttempts: options.maxUrlAttempts ?? 10,
     preferCdn: options.preferCdn ?? false,
     skipMetadataRefresh: options.skipMetadataRefresh ?? false,
+    fastImageFetch: options.fastImageFetch ?? false,
   };
 
   return mapWithConcurrency(nfts, concurrency, async (nft) => {

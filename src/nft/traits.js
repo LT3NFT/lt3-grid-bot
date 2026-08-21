@@ -182,7 +182,7 @@ export async function fetchNftsByTrait(traitType, traitValue) {
     next = typeof data?.next === "string" && data.next.length > 0 ? data.next : null;
     pages += 1;
     if (!next || batch.length === 0) break;
-    if (collected.length >= TRAIT_GRID_SIZE * 4) break;
+    if (collected.length >= TRAIT_GRID_SIZE + 3) break;
   }
 
   return collected;
