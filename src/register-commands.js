@@ -8,7 +8,7 @@ const names = registered.map((cmd) => `/${cmd.name}`).join(", ");
 console.log(`Registered ${names} for the LT3 server (open to all members).`);
 console.log("");
 console.log("IMPORTANT — Discord integration overrides:");
-console.log("  Do NOT add role overrides on /grid or /gif unless you must.");
+console.log("  Do NOT add role overrides on /grid, /gif, or /random unless you must.");
 console.log("  If you see “Has Overrides”, open each command and REMOVE all role rows.");
 console.log("  Let the top-level @everyone + All Channels settings apply instead.");
 console.log("");

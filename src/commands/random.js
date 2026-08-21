@@ -7,9 +7,9 @@ import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js
 
 import { publicSlashCommandDefaults } from "./public-defaults.js";
 
-export const displayCommandData = {
+export const randomCommandData = {
   ...publicSlashCommandDefaults,
-  name: "display",
+  name: "random",
   description: "Generate a 3×3 grid of random LT3s matching a trait",
   options: [
     {
@@ -21,7 +21,7 @@ export const displayCommandData = {
   ],
 };
 
-export async function handleDisplayCommand(interaction) {
+export async function handleRandomCommand(interaction) {
   if (DISCORD_GRID_CHANNEL_ID && interaction.channelId !== DISCORD_GRID_CHANNEL_ID) {
     await safeEditReply(interaction, {
       content: "Use this command in the designated grid channel.",
@@ -30,7 +30,7 @@ export async function handleDisplayCommand(interaction) {
     return;
   }
 
-  const cooldown = checkCooldown(interaction.user.id, GRID_COOLDOWN_MS, "display");
+  const cooldown = checkCooldown(interaction.user.id, GRID_COOLDOWN_MS, "random");
   if (!cooldown.ok) {
     await safeEditReply(interaction, {
       content: `Please wait ${cooldown.remainingSeconds}s before requesting another trait grid.`,
@@ -52,7 +52,7 @@ export async function handleDisplayCommand(interaction) {
             files: [result.attachment],
           });
         } catch (err) {
-          console.error("/display failed", err);
+          console.error("/random failed", err);
           const message =
             err instanceof Error && err.message
               ? err.message
@@ -69,7 +69,7 @@ export async function handleDisplayCommand(interaction) {
       }
     );
   } catch (err) {
-    console.error("/display job failed", err);
+    console.error("/random job failed", err);
     await safeEditReply(interaction, {
       content: "Something went wrong while building your trait grid.",
     });

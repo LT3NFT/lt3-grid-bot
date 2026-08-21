@@ -13,7 +13,7 @@ import {
 } from "./config.js";
 import { gridCommandData, handleGridCommand } from "./commands/grid.js";
 import { gifCommandData, handleGifCommand } from "./commands/gif.js";
-import { displayCommandData, handleDisplayCommand } from "./commands/display.js";
+import { randomCommandData, handleRandomCommand } from "./commands/random.js";
 import { wireChat } from "./chat/handler.js";
 
 export function createBotClient() {
@@ -34,7 +34,7 @@ export async function registerGuildCommands() {
   await rest.put(Routes.applicationCommands(DISCORD_APPLICATION_ID), { body: [] });
 
   return rest.put(Routes.applicationGuildCommands(DISCORD_APPLICATION_ID, DISCORD_GUILD_ID), {
-    body: [gridCommandData, gifCommandData, displayCommandData],
+    body: [gridCommandData, gifCommandData, randomCommandData],
   });
 }
 
@@ -46,7 +46,7 @@ async function deferOrExplain(interaction) {
     console.error("deferReply failed", err);
     try {
       await interaction.reply({
-        content: "Bot is reconnecting — wait 10 seconds and try a fresh `/grid`, `/gif`, or `/display`.",
+        content: "Bot is reconnecting — wait 10 seconds and try a fresh `/grid`, `/gif`, or `/random`.",
         ephemeral: true,
       });
     } catch {
@@ -59,6 +59,14 @@ async function deferOrExplain(interaction) {
 export function wireBot(client) {
   client.once(Events.ClientReady, (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
+    void registerGuildCommands()
+      .then((registered) => {
+        const names = registered.map((cmd) => `/${cmd.name}`).join(", ");
+        console.log(`Slash commands synced: ${names}`);
+      })
+      .catch((err) => {
+        console.error("Failed to sync slash commands on startup", err);
+      });
   });
 
   client.on("shardDisconnect", (_event, shardId) => {
@@ -74,7 +82,7 @@ export function wireBot(client) {
     if (
       interaction.commandName !== "grid" &&
       interaction.commandName !== "gif" &&
-      interaction.commandName !== "display"
+      interaction.commandName !== "random"
     ) {
       return;
     }
@@ -90,7 +98,7 @@ export function wireBot(client) {
           ? handleGridCommand(interaction)
           : interaction.commandName === "gif"
             ? handleGifCommand(interaction)
-            : handleDisplayCommand(interaction);
+            : handleRandomCommand(interaction);
 
       run.catch((err) => {
         console.error("Command handler error", err);
