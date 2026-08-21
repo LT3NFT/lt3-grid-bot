@@ -117,7 +117,7 @@ export async function buildSingleLt3ForTraitMatch(traitType, traitValue) {
 
   const label = `${traitType}: ${traitValue} #${tokenId}`;
   const collection = await loadLt3CollectionFromNfts([nft], "trait-random", label, {
-    purpose: "trait-grid",
+    purpose: "trait-single",
   });
   const image = collection.images[0];
   if (!image?.buffer) {

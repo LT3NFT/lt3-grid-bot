@@ -78,11 +78,11 @@ function timeoutForUrl(url, preferCdn, fastImageFetch) {
   return preferCdn ? 8_000 : 12_000;
 }
 
-async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200) {
+async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200, jpegQuality = 88) {
   const buffer = await fetchImageBuffer(url, timeoutMs);
   const { data, info } = await sharp(buffer)
     .resize(maxLongEdge, maxLongEdge, { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: 88 })
+    .jpeg({ quality: jpegQuality })
     .toBuffer({ resolveWithObject: true });
 
   return {
@@ -93,12 +93,12 @@ async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200)
   };
 }
 
-async function tryLoadFromUrl(url, displayName, maxLongEdge, preferCdn, fastImageFetch) {
+async function tryLoadFromUrl(url, displayName, maxLongEdge, preferCdn, fastImageFetch, jpegQuality = 88) {
   const timeoutMs = timeoutForUrl(url, preferCdn, fastImageFetch);
   const retries = fastImageFetch ? 1 : 2;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
-      return await loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge);
+      return await loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge, jpegQuality);
     } catch (err) {
       if (attempt === retries - 1) throw err;
       await new Promise((resolve) => setTimeout(resolve, preferCdn ? 100 : 400));
@@ -156,7 +156,8 @@ async function tryUrlsForNft(nft, displayName, options) {
         displayName,
         options.maxLongEdge ?? 1200,
         options.preferCdn,
-        options.fastImageFetch
+        options.fastImageFetch,
+        options.jpegQuality ?? 88
       );
     } catch {
       // try next candidate
@@ -211,6 +212,7 @@ export async function loadNftImages(nfts, options = {}) {
     preferCdn: options.preferCdn ?? false,
     skipMetadataRefresh: options.skipMetadataRefresh ?? false,
     fastImageFetch: options.fastImageFetch ?? false,
+    jpegQuality: options.jpegQuality ?? 88,
   };
 
   return mapWithConcurrency(nfts, concurrency, async (nft) => {

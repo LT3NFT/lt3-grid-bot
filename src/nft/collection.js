@@ -6,6 +6,8 @@ import {
   MAX_NFT_COUNT,
   TRAIT_GRID_DECODE_LONG_EDGE,
   TRAIT_GRID_IMAGE_CONCURRENCY,
+  TRAIT_SINGLE_DECODE_LONG_EDGE,
+  TRAIT_SINGLE_JPEG_QUALITY,
 } from "../config.js";
 import { fetchAllLt3NftsForOwner } from "./fetch.js";
 import { loadNftImages } from "./load-images.js";
@@ -28,23 +30,29 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
   const isGrid = options.purpose === "grid";
   const isGif = options.purpose === "gif";
   const isTraitGrid = options.purpose === "trait-grid";
+  const isTraitSingle = options.purpose === "trait-single";
   const images = await loadNftImages(nfts, {
     concurrency: isTraitGrid
       ? TRAIT_GRID_IMAGE_CONCURRENCY
-      : isGif
-        ? imageFetchConcurrencyForGif(nfts.length)
-        : imageFetchConcurrencyForCount(nfts.length),
-    maxLongEdge: isTraitGrid
-      ? TRAIT_GRID_DECODE_LONG_EDGE
-      : isGrid
-        ? gridDecodeLongEdgeForCount(nfts.length)
+      : isTraitSingle
+        ? 1
         : isGif
-          ? gifDecodeLongEdgeForCount(nfts.length)
-          : 1200,
-    maxUrlAttempts: isTraitGrid ? 3 : isGrid ? 4 : isGif ? 4 : 10,
-    preferCdn: isGrid || isGif || isTraitGrid,
-    skipMetadataRefresh: isGif || isTraitGrid,
-    fastImageFetch: isTraitGrid,
+          ? imageFetchConcurrencyForGif(nfts.length)
+          : imageFetchConcurrencyForCount(nfts.length),
+    maxLongEdge: isTraitSingle
+      ? TRAIT_SINGLE_DECODE_LONG_EDGE
+      : isTraitGrid
+        ? TRAIT_GRID_DECODE_LONG_EDGE
+        : isGrid
+          ? gridDecodeLongEdgeForCount(nfts.length)
+          : isGif
+            ? gifDecodeLongEdgeForCount(nfts.length)
+            : 1200,
+    maxUrlAttempts: isTraitSingle ? 4 : isTraitGrid ? 3 : isGrid ? 4 : isGif ? 4 : 10,
+    preferCdn: isGrid || isGif || isTraitGrid || isTraitSingle,
+    skipMetadataRefresh: isGif || isTraitGrid || isTraitSingle,
+    fastImageFetch: isTraitGrid || isTraitSingle,
+    jpegQuality: isTraitSingle ? TRAIT_SINGLE_JPEG_QUALITY : 88,
   });
   return { address, display, count: images.length, images };
 }
