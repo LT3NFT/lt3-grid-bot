@@ -29,6 +29,7 @@ import {
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
+import { isTraitGridRequest } from "../src/chat/traitGrid.js";
 
 let failed = 0;
 
@@ -192,6 +193,14 @@ const egg = sanitizeChatReply("🥚", { allowEgg: true });
 assert("keeps egg emoji", egg.includes("🥚"));
 
 assert("utility copy exact", SCRIPTED.utility.includes("they will spam your dms"));
+
+assert(
+  "trait grid request venus fly trap",
+  isTraitGridRequest("Show me some LT3s with the Venus Fly Trap head trait @LT3BOT")
+);
+assert("trait grid request show headwear", isTraitGridRequest("show me LT3s with Ski headwear"));
+assert("trait grid not plain chat", !isTraitGridRequest("what do you think of LT3 art"));
+assert("trait grid not floor", !isTraitGridRequest("what's the floor price"));
 
 if (failed) {
   console.error(`\n${failed} test(s) failed`);

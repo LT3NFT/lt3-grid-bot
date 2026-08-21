@@ -3,6 +3,7 @@ import {
   fetchAllLt3NftsForOwner,
   loadLt3CollectionFromNfts,
 } from "./nft/collection.js";
+import { pickRandomNftsForTraitGrid, TRAIT_GRID_SIZE } from "./nft/traits.js";
 import { generateLayouts } from "./layout/generate.js";
 import { getExportDimensionsForLayout } from "./layout/dimensions.js";
 import { pickBestLayout } from "./layout/rank.js";
@@ -51,4 +52,12 @@ export async function buildGridForWalletInputWithTimeout(rawInput) {
     gridTimeoutForCount(nfts.length),
     "Grid generation timed out. Large collections can take several minutes — try again in a moment."
   );
+}
+
+export async function buildGridForTraitMatch(traitType, traitValue) {
+  const nfts = await pickRandomNftsForTraitGrid(traitType, traitValue, TRAIT_GRID_SIZE);
+  const label = `${traitType}: ${traitValue}`;
+  const collection = await loadLt3CollectionFromNfts(nfts, "trait-grid", label, { purpose: "grid" });
+  const result = await buildGridFromCollection(collection);
+  return { ...result, traitType, traitValue, count: TRAIT_GRID_SIZE };
 }

@@ -34,3 +34,16 @@ const GIF_MESSAGES = [
 export function pickGifMessage() {
   return GIF_MESSAGES[Math.floor(Math.random() * GIF_MESSAGES.length)];
 }
+
+const TRAIT_GRID_MESSAGES = [
+  "Beep boop. Random {traitType}: {traitValue}. 🤖",
+  "Beep boop. Nine {traitValue} LT3s, fresh from the chain. 🤖",
+  "Beep boop. {traitType} {traitValue} sample grid. 🤖",
+  "Beep boop. I shuffled the collection and these showed up. 🤖",
+  "Beep boop. Trait scan complete. Enjoy the {traitValue} set. 🤖",
+];
+
+export function pickTraitGridMessage(traitType, traitValue) {
+  const template = TRAIT_GRID_MESSAGES[Math.floor(Math.random() * TRAIT_GRID_MESSAGES.length)];
+  return template.replace("{traitType}", traitType).replace("{traitValue}", traitValue);
+}

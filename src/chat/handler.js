@@ -5,6 +5,7 @@ import {
   CHAT_ENABLED,
 } from "../config.js";
 import { buildChatReply } from "./respond.js";
+import { buildTraitGridReplyQueued, isTraitGridRequest } from "./traitGrid.js";
 import { getImageUrlsFromMessage } from "./messageImages.js";
 import {
   isCearUser,
@@ -76,6 +77,25 @@ async function handleChatMessage(message, client) {
   const shgNickname = shgUseNickname ? pickShgNickname(`${username}:${cleanText}`) : null;
 
   try {
+    if (isTraitGridRequest(cleanText) && imageUrls.length === 0) {
+      const pending = await message.react("⏳").catch(() => null);
+      try {
+        const gridReply = await buildTraitGridReplyQueued(cleanText);
+        if (gridReply) {
+          await message.reply({ content: gridReply.caption, files: [gridReply.attachment] });
+          return;
+        }
+      } catch (err) {
+        console.error("[Chat] trait grid failed", err);
+        const msg =
+          err instanceof Error && err.message ? err.message : "Could not build that trait grid.";
+        await message.reply(msg);
+        return;
+      } finally {
+        if (pending) await pending.remove().catch(() => {});
+      }
+    }
+
     const reply = await buildChatReply(cleanText, {
       username,
       displayName,
@@ -102,7 +122,7 @@ export function wireChat(client) {
     return;
   }
 
-  console.log("[Chat] enabled — responds to @mentions and replies; analyzes attached LT3 images.");
+  console.log("[Chat] enabled — @mentions and replies; trait grid requests; LT3 image analysis.");
 
   client.on(Events.MessageCreate, (message) => {
     void handleChatMessage(message, client);
