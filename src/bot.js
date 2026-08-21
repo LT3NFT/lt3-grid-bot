@@ -13,6 +13,7 @@ import {
 } from "./config.js";
 import { gridCommandData, handleGridCommand } from "./commands/grid.js";
 import { gifCommandData, handleGifCommand } from "./commands/gif.js";
+import { displayCommandData, handleDisplayCommand } from "./commands/display.js";
 import { wireChat } from "./chat/handler.js";
 
 export function createBotClient() {
@@ -33,7 +34,7 @@ export async function registerGuildCommands() {
   await rest.put(Routes.applicationCommands(DISCORD_APPLICATION_ID), { body: [] });
 
   return rest.put(Routes.applicationGuildCommands(DISCORD_APPLICATION_ID, DISCORD_GUILD_ID), {
-    body: [gridCommandData, gifCommandData],
+    body: [gridCommandData, gifCommandData, displayCommandData],
   });
 }
 
@@ -45,7 +46,7 @@ async function deferOrExplain(interaction) {
     console.error("deferReply failed", err);
     try {
       await interaction.reply({
-        content: "Bot is reconnecting — wait 10 seconds and try a fresh `/grid` or `/gif`.",
+        content: "Bot is reconnecting — wait 10 seconds and try a fresh `/grid`, `/gif`, or `/display`.",
         ephemeral: true,
       });
     } catch {
@@ -70,7 +71,13 @@ export function wireBot(client) {
 
   client.on(Events.InteractionCreate, (interaction) => {
     if (!interaction.isChatInputCommand()) return;
-    if (interaction.commandName !== "grid" && interaction.commandName !== "gif") return;
+    if (
+      interaction.commandName !== "grid" &&
+      interaction.commandName !== "gif" &&
+      interaction.commandName !== "display"
+    ) {
+      return;
+    }
 
     // Defer in the first microtask — never gate on a stale "ready" flag after reconnect.
     void (async () => {
@@ -81,7 +88,9 @@ export function wireBot(client) {
       const run =
         interaction.commandName === "grid"
           ? handleGridCommand(interaction)
-          : handleGifCommand(interaction);
+          : interaction.commandName === "gif"
+            ? handleGifCommand(interaction)
+            : handleDisplayCommand(interaction);
 
       run.catch((err) => {
         console.error("Command handler error", err);

@@ -36,14 +36,19 @@ export function pickGifMessage() {
 }
 
 const TRAIT_GRID_MESSAGES = [
-  "Beep boop. Random {traitType}: {traitValue}. 🤖",
-  "Beep boop. Nine {traitValue} LT3s, fresh from the chain. 🤖",
-  "Beep boop. {traitType} {traitValue} sample grid. 🤖",
-  "Beep boop. I shuffled the collection and these showed up. 🤖",
-  "Beep boop. Trait scan complete. Enjoy the {traitValue} set. 🤖",
+  "Beep boop. I shuffled the {traitValue} {traitType} pool. Here is your grid. 🤖",
+  "Beep boop. Nine random {traitValue} LT3s. 🤖",
+  "Beep boop. Random {traitValue} sample loaded. Grid attached. 🤖",
+  "Beep boop. Here are some {traitValue} LT3s. 🤖",
+  "Beep boop. Random {traitValue} pull complete. 🤖",
+  "Beep boop. Here is a randomized grid of {traitValue} LT3s. 🤖",
+  "Beep boop. Nine {traitValue} LT3s, shuffled and gridded. 🤖",
+  "Beep boop. I pulled nine random {traitValue} LT3s for you. 🤖",
+  "Beep boop. Here are nine {traitValue} LT3s I found. 🤖",
+  "Beep boop. Random {traitValue} grid. My circuits approve. 🤖",
 ];
 
 export function pickTraitGridMessage(traitType, traitValue) {
   const template = TRAIT_GRID_MESSAGES[Math.floor(Math.random() * TRAIT_GRID_MESSAGES.length)];
-  return template.replace("{traitType}", traitType).replace("{traitValue}", traitValue);
+  return template.replaceAll("{traitType}", traitType).replaceAll("{traitValue}", traitValue);
 }

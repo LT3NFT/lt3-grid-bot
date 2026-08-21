@@ -27,20 +27,20 @@ function stripTraitGridBoilerplate(text) {
     .trim();
 }
 
-/**
- * @returns {Promise<{ caption: string, attachment: AttachmentBuilder, traitType: string, traitValue: string }|null>}
- */
-export async function buildTraitGridReply(text) {
-  if (!isTraitGridRequest(text)) return null;
+function traitMatchErrorMessage(traitText) {
+  const hint = stripTraitGridBoilerplate(traitText) || traitText.trim();
+  return hint
+    ? `Could not match "${hint}" to an LT3 trait. Try the exact OpenSea trait name (e.g. Venus Fly Trap) or add a category like headwear.`
+    : "Could not figure out which trait you want. Try: Venus Fly Trap headwear";
+}
 
-  const match = await resolveTraitFromText(text);
+/**
+ * @returns {Promise<{ caption: string, attachment: AttachmentBuilder, traitType: string, traitValue: string }>}
+ */
+export async function buildTraitGridFromTraitText(traitText) {
+  const match = await resolveTraitFromText(traitText);
   if (!match) {
-    const hint = stripTraitGridBoilerplate(text);
-    throw new Error(
-      hint
-        ? `Could not match "${hint}" to an LT3 trait. Try the exact OpenSea trait name (e.g. Venus Fly Trap).`
-        : "Could not figure out which trait you want. Try: show me LT3s with Venus Fly Trap headwear."
-    );
+    throw new Error(traitMatchErrorMessage(traitText));
   }
 
   const result = await buildGridForTraitMatch(match.traitType, match.value);
@@ -53,6 +53,14 @@ export async function buildTraitGridReply(text) {
     traitType: match.traitType,
     traitValue: match.value,
   };
+}
+
+/**
+ * @returns {Promise<{ caption: string, attachment: AttachmentBuilder, traitType: string, traitValue: string }|null>}
+ */
+export async function buildTraitGridReply(text) {
+  if (!isTraitGridRequest(text)) return null;
+  return buildTraitGridFromTraitText(text);
 }
 
 /**
