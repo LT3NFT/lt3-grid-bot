@@ -1,7 +1,7 @@
 import { AttachmentBuilder } from "discord.js";
-import { buildGridForTraitMatch } from "../grid-service.js";
+import { buildGridForTraitMatch, buildSingleLt3ForTraitMatch } from "../grid-service.js";
 import { resolveTraitFromText } from "../nft/traits.js";
-import { pickTraitGridMessage } from "../util/bot-messages.js";
+import { pickTraitGridMessage, pickTraitRandomMessage } from "../util/bot-messages.js";
 import { runGridJob } from "../util/heavy-queue.js";
 
 const TRAIT_GRID_REQUEST_RE =
@@ -52,6 +52,28 @@ export async function buildTraitGridFromTraitText(traitText) {
     attachment,
     traitType: match.traitType,
     traitValue: match.value,
+  };
+}
+
+/**
+ * @returns {Promise<{ caption: string, attachment: AttachmentBuilder, traitType: string, traitValue: string, tokenId: string }>}
+ */
+export async function buildTraitSingleFromTraitText(traitText) {
+  const match = await resolveTraitFromText(traitText);
+  if (!match) {
+    throw new Error(traitMatchErrorMessage(traitText));
+  }
+
+  const result = await buildSingleLt3ForTraitMatch(match.traitType, match.value);
+  const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
+  const caption = pickTraitRandomMessage(match.traitType, match.value, result.tokenId);
+
+  return {
+    caption,
+    attachment,
+    traitType: match.traitType,
+    traitValue: match.value,
+    tokenId: result.tokenId,
   };
 }
 

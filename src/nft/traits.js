@@ -157,7 +157,7 @@ function shuffleInPlace(arr) {
 /**
  * @returns {Promise<object[]>}
  */
-export async function fetchNftsByTrait(traitType, traitValue) {
+export async function fetchNftsByTrait(traitType, traitValue, maxResults = TRAIT_GRID_SIZE + 3) {
   if (!OPENSEA_API_KEY) {
     throw new Error("OpenSea API key missing — trait grids need OPENSEA_API_KEY.");
   }
@@ -182,23 +182,44 @@ export async function fetchNftsByTrait(traitType, traitValue) {
     next = typeof data?.next === "string" && data.next.length > 0 ? data.next : null;
     pages += 1;
     if (!next || batch.length === 0) break;
-    if (collected.length >= TRAIT_GRID_SIZE + 3) break;
+    if (collected.length >= maxResults) break;
   }
 
   return collected;
 }
 
-export async function pickRandomNftsForTraitGrid(traitType, traitValue, size = TRAIT_GRID_SIZE) {
-  const all = await fetchNftsByTrait(traitType, traitValue);
+function dedupeNfts(nfts) {
   const unique = [];
   const seen = new Set();
-
-  for (const nft of all) {
+  for (const nft of nfts) {
     const id = getNftTokenId(nft);
     if (id == null || seen.has(String(id))) continue;
     seen.add(String(id));
     unique.push(nft);
   }
+  return unique;
+}
+
+const TRAIT_SINGLE_POOL_SIZE = 32;
+
+/**
+ * @returns {Promise<object>}
+ */
+export async function pickRandomNftForTrait(traitType, traitValue) {
+  const all = await fetchNftsByTrait(traitType, traitValue, TRAIT_SINGLE_POOL_SIZE);
+  const unique = dedupeNfts(all);
+
+  if (!unique.length) {
+    throw new Error(`No LT3s match ${traitType}: ${traitValue}.`);
+  }
+
+  shuffleInPlace(unique);
+  return unique[0];
+}
+
+export async function pickRandomNftsForTraitGrid(traitType, traitValue, size = TRAIT_GRID_SIZE) {
+  const all = await fetchNftsByTrait(traitType, traitValue, TRAIT_GRID_SIZE + 3);
+  const unique = dedupeNfts(all);
 
   if (unique.length < size) {
     throw new Error(

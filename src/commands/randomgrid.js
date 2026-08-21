@@ -1,12 +1,12 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { buildTraitSingleFromTraitText } from "../chat/traitGrid.js";
+import { buildTraitGridFromTraitText } from "../chat/traitGrid.js";
 import { handleTraitSlashCommand } from "./trait-command-shared.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
 
-export const randomCommandData = {
+export const randomgridCommandData = {
   ...publicSlashCommandDefaults,
-  name: "random",
-  description: "Pull one random LT3 matching a trait",
+  name: "randomgrid",
+  description: "Generate a 3×3 grid of random LT3s matching a trait",
   options: [
     {
       name: "trait",
@@ -17,12 +17,12 @@ export const randomCommandData = {
   ],
 };
 
-export async function handleRandomCommand(interaction) {
+export async function handleRandomgridCommand(interaction) {
   const trait = interaction.options.getString("trait", true);
   await handleTraitSlashCommand(interaction, {
-    build: () => buildTraitSingleFromTraitText(trait),
-    cooldownKey: "random",
-    progressLabel: "Finding your LT3",
-    errorLabel: "/random",
+    build: () => buildTraitGridFromTraitText(trait),
+    cooldownKey: "randomgrid",
+    progressLabel: "Building your trait grid",
+    errorLabel: "/randomgrid",
   });
 }

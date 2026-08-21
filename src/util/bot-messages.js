@@ -52,3 +52,24 @@ export function pickTraitGridMessage(traitType, traitValue) {
   const template = TRAIT_GRID_MESSAGES[Math.floor(Math.random() * TRAIT_GRID_MESSAGES.length)];
   return template.replaceAll("{traitType}", traitType).replaceAll("{traitValue}", traitValue);
 }
+
+const TRAIT_RANDOM_MESSAGES = [
+  "Beep boop. Random {traitValue} pull complete. LT3 #{tokenId}. 🤖",
+  "Beep boop. One random {traitValue} LT3. #{tokenId}. 🤖",
+  "Beep boop. I shuffled the {traitValue} {traitType} pool and got #{tokenId}. 🤖",
+  "Beep boop. Here is a random {traitValue} LT3. #{tokenId}. 🤖",
+  "Beep boop. Random {traitValue} sample loaded. LT3 #{tokenId}. 🤖",
+  "Beep boop. I pulled a random {traitValue} LT3 for you. #{tokenId}. 🤖",
+  "Beep boop. One {traitValue} LT3 from the chain. #{tokenId}. 🤖",
+  "Beep boop. Here is #{tokenId}, a random {traitValue} LT3 I found. 🤖",
+  "Beep boop. Single {traitValue} pull. LT3 #{tokenId}. 🤖",
+  "Beep boop. Random {traitValue} LT3. My circuits approve. #{tokenId}. 🤖",
+];
+
+export function pickTraitRandomMessage(traitType, traitValue, tokenId) {
+  const template = TRAIT_RANDOM_MESSAGES[Math.floor(Math.random() * TRAIT_RANDOM_MESSAGES.length)];
+  return template
+    .replaceAll("{traitType}", traitType)
+    .replaceAll("{traitValue}", traitValue)
+    .replaceAll("{tokenId}", String(tokenId));
+}

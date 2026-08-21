@@ -48,7 +48,7 @@ if (guildCommands.length === 0) {
 
 console.log("");
 console.log("If commands exist here but members cannot see them:");
-console.log("  1. REMOVE per-command overrides on /grid, /gif & /random (Integrations → command → clear overrides)");
+console.log("  1. REMOVE per-command overrides on /grid, /gif, /random & /randomgrid (Integrations → command → clear overrides)");
 console.log("  2. Server Settings → Roles → @everyone AND Holder → enable “Use Application Commands”");
 console.log("  3. Channel (and parent category) → Holder → enable “Use Application Commands”");
 console.log("  4. “View Server As Role” often hides slash commands — test with a real member account");

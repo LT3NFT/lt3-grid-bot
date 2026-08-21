@@ -3,7 +3,8 @@ import {
   fetchAllLt3NftsForOwner,
   loadLt3CollectionFromNfts,
 } from "./nft/collection.js";
-import { pickRandomNftsForTraitGrid, TRAIT_GRID_SIZE } from "./nft/traits.js";
+import { pickRandomNftForTrait, pickRandomNftsForTraitGrid, TRAIT_GRID_SIZE } from "./nft/traits.js";
+import { getNftTokenId } from "./nft/normalize.js";
 import { generateLayouts } from "./layout/generate.js";
 import { getExportDimensionsForLayout } from "./layout/dimensions.js";
 import { pickBestLayout } from "./layout/rank.js";
@@ -105,4 +106,31 @@ export async function buildGridForTraitMatch(traitType, traitValue) {
   });
   const result = await buildTraitGridFromCollection(collection);
   return { ...result, traitType, traitValue, count: TRAIT_GRID_SIZE };
+}
+
+export async function buildSingleLt3ForTraitMatch(traitType, traitValue) {
+  const nft = await pickRandomNftForTrait(traitType, traitValue);
+  const tokenId = getNftTokenId(nft);
+  if (tokenId == null) {
+    throw new Error(`Could not read token id for ${traitType}: ${traitValue}.`);
+  }
+
+  const label = `${traitType}: ${traitValue} #${tokenId}`;
+  const collection = await loadLt3CollectionFromNfts([nft], "trait-random", label, {
+    purpose: "trait-grid",
+  });
+  const image = collection.images[0];
+  if (!image?.buffer) {
+    throw new Error(`Could not load image for LT3 #${tokenId}.`);
+  }
+
+  return {
+    buffer: image.buffer,
+    filename: `lt3-${tokenId}.jpg`,
+    extension: "jpg",
+    mime: "image/jpeg",
+    tokenId: String(tokenId),
+    traitType,
+    traitValue,
+  };
 }
