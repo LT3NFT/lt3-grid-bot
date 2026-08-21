@@ -89,8 +89,8 @@ export const TRAIT_GRID_EXPORT_LONG_EDGE = Number(process.env.TRAIT_GRID_EXPORT_
 export const TRAIT_GRID_IMAGE_CONCURRENCY = Number(process.env.TRAIT_GRID_IMAGE_CONCURRENCY) || 9;
 
 /** Single trait pulls — one image at full chat size, still CDN-first. */
-export const TRAIT_SINGLE_DECODE_LONG_EDGE = Number(process.env.TRAIT_SINGLE_DECODE_LONG_EDGE) || 1200;
-export const TRAIT_SINGLE_JPEG_QUALITY = Number(process.env.TRAIT_SINGLE_JPEG_QUALITY) || 93;
+export const TRAIT_SINGLE_DECODE_LONG_EDGE = Number(process.env.TRAIT_SINGLE_DECODE_LONG_EDGE) || 2048;
+export const TRAIT_SINGLE_JPEG_QUALITY = Number(process.env.TRAIT_SINGLE_JPEG_QUALITY) || 95;
 
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 export const DISCORD_APPLICATION_ID = String(process.env.DISCORD_APPLICATION_ID || "").trim();

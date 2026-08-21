@@ -2,6 +2,7 @@ import sharp from "sharp";
 import { LT3_ALCHEMY_KEY, LT3_CONTRACT_LC } from "../config.js";
 import {
   expandImageUrlCandidates,
+  getHighResNftImageUrlCandidates,
   getNftContractAddressLc,
   getNftImageUrlCandidates,
   getNftTokenId,
@@ -46,8 +47,24 @@ async function fetchImageBuffer(url, timeoutMs) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+function isLikelyLowResUrl(url) {
+  const lc = url.toLowerCase();
+  if (/\b(thumb|thumbnail|preview|small)\b/.test(lc)) return true;
+  const widthMatch = lc.match(/\bw_(\d+)\b/);
+  if (widthMatch && Number(widthMatch[1]) < 900) return true;
+  const heightMatch = lc.match(/\bh_(\d+)\b/);
+  if (heightMatch && Number(heightMatch[1]) < 900) return true;
+  return false;
+}
+
 function urlsForAttempt(nft, options) {
-  const ranked = rankImageUrls(expandImageUrlCandidates(getNftImageUrlCandidates(nft)));
+  const sourceUrls = options.preferHighRes
+    ? getHighResNftImageUrlCandidates(nft)
+    : getNftImageUrlCandidates(nft);
+  let ranked = rankImageUrls(expandImageUrlCandidates(sourceUrls));
+  if (options.preferHighRes) {
+    ranked = ranked.filter((url) => !isLikelyLowResUrl(url));
+  }
   if (options.preferCdn) {
     const cdn = ranked.filter(isCdnUrl);
     if (cdn.length) return cdn;
@@ -78,12 +95,25 @@ function timeoutForUrl(url, preferCdn, fastImageFetch) {
   return preferCdn ? 8_000 : 12_000;
 }
 
-async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200, jpegQuality = 88) {
+async function loadImageFromUrl(
+  url,
+  displayName,
+  timeoutMs,
+  maxLongEdge = 1200,
+  jpegQuality = 88,
+  highQuality = false
+) {
   const buffer = await fetchImageBuffer(url, timeoutMs);
-  const { data, info } = await sharp(buffer)
-    .resize(maxLongEdge, maxLongEdge, { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: jpegQuality })
-    .toBuffer({ resolveWithObject: true });
+  let pipeline = sharp(buffer).resize(maxLongEdge, maxLongEdge, {
+    fit: "inside",
+    withoutEnlargement: true,
+    ...(highQuality ? { kernel: sharp.kernel.lanczos3 } : {}),
+  });
+  pipeline = pipeline.jpeg({
+    quality: jpegQuality,
+    ...(highQuality ? { mozjpeg: true } : {}),
+  });
+  const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
 
   return {
     name: displayName,
@@ -93,12 +123,27 @@ async function loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge = 1200,
   };
 }
 
-async function tryLoadFromUrl(url, displayName, maxLongEdge, preferCdn, fastImageFetch, jpegQuality = 88) {
+async function tryLoadFromUrl(
+  url,
+  displayName,
+  maxLongEdge,
+  preferCdn,
+  fastImageFetch,
+  jpegQuality = 88,
+  highQuality = false
+) {
   const timeoutMs = timeoutForUrl(url, preferCdn, fastImageFetch);
   const retries = fastImageFetch ? 1 : 2;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
-      return await loadImageFromUrl(url, displayName, timeoutMs, maxLongEdge, jpegQuality);
+      return await loadImageFromUrl(
+        url,
+        displayName,
+        timeoutMs,
+        maxLongEdge,
+        jpegQuality,
+        highQuality
+      );
     } catch (err) {
       if (attempt === retries - 1) throw err;
       await new Promise((resolve) => setTimeout(resolve, preferCdn ? 100 : 400));
@@ -157,7 +202,8 @@ async function tryUrlsForNft(nft, displayName, options) {
         options.maxLongEdge ?? 1200,
         options.preferCdn,
         options.fastImageFetch,
-        options.jpegQuality ?? 88
+        options.jpegQuality ?? 88,
+        options.highQuality ?? false
       );
     } catch {
       // try next candidate
@@ -210,9 +256,11 @@ export async function loadNftImages(nfts, options = {}) {
     maxLongEdge: options.maxLongEdge ?? 1200,
     maxUrlAttempts: options.maxUrlAttempts ?? 10,
     preferCdn: options.preferCdn ?? false,
+    preferHighRes: options.preferHighRes ?? false,
     skipMetadataRefresh: options.skipMetadataRefresh ?? false,
     fastImageFetch: options.fastImageFetch ?? false,
     jpegQuality: options.jpegQuality ?? 88,
+    highQuality: options.highQuality ?? false,
   };
 
   return mapWithConcurrency(nfts, concurrency, async (nft) => {

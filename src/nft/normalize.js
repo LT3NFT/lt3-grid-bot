@@ -82,6 +82,40 @@ export function getNftImageUrlCandidates(nft) {
     nft.raw?.metadata?.image,
     nft.raw?.metadata?.image_url,
   ];
+  return dedupeMediaUrls(raw);
+}
+
+/** Prefer full-size sources over OpenSea/Cloudinary display previews. */
+export function getHighResNftImageUrlCandidates(nft) {
+  if (!nft || typeof nft !== "object") return [];
+  const img = nft.image;
+  const media = nft?.media;
+  const alchemyGateways = [];
+  if (Array.isArray(media)) {
+    for (const entry of media) {
+      if (entry?.gateway) alchemyGateways.push(entry.gateway);
+    }
+  }
+
+  const raw = [
+    nft.original_image_url,
+    nft.image_url,
+    ...(typeof img === "object" && img
+      ? [img.originalUrl, img.pngUrl, img.gateway, img.cachedUrl]
+      : []),
+    ...alchemyGateways,
+    typeof img === "string" ? img : null,
+    nft.display_image_url,
+    ...(typeof img === "object" && img ? [img.thumbnailUrl] : []),
+    nft.metadata?.image,
+    nft.metadata?.image_url,
+    nft.raw?.metadata?.image,
+    nft.raw?.metadata?.image_url,
+  ];
+  return dedupeMediaUrls(raw);
+}
+
+function dedupeMediaUrls(raw) {
   const seen = new Set();
   const out = [];
   for (const c of raw) {
