@@ -26,6 +26,9 @@ import {
   stripLeadingGreeting,
   stripTrailingQuestion,
   userGreetedFirst,
+  isPersonNameQuestion,
+  looksLikeInventedPersonReply,
+  looksLikeUnpromptedMoss,
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
@@ -50,10 +53,21 @@ assert("short input cap", maxCharsForInput("gm") >= 60);
 assert("conversational cap", maxCharsForInput("what you been up to") >= 110);
 assert("longer input cap", maxCharsForInput("chilling and looking at lt3s i like") >= 50);
 assert("floor trigger", matchScriptedTrigger("what's the floor price")?.kind === "stats");
-assert("listed trigger", matchScriptedTrigger("how many are listed")?.kind === "stats");
-assert("listed lt3 trigger", matchScriptedTrigger("how many lt3s are listed")?.kind === "stats");
+assert("listed stats question", isCollectionStatsQuestion("how many are listed"));
+assert("listed lt3 stats question", isCollectionStatsQuestion("how many lt3s are listed"));
 assert("stats fallback detect", isCollectionStatsQuestion("how many LT3s are listed on OpenSea"));
-assert("owners trigger", matchScriptedTrigger("how many owners does lt3 have")?.kind === "stats");
+assert("owners stats question", isCollectionStatsQuestion("how many owners does lt3 have"));
+assert("how many eggs not stats", !isCollectionStatsQuestion("how many eggs should i eat rn"));
+assert("how many eggs not trigger", matchScriptedTrigger("how many eggs should i eat")?.kind !== "stats");
+assert("person question detect", isPersonNameQuestion("How bout Jedidiah"));
+assert(
+  "invented person detect",
+  looksLikeInventedPersonReply("Jedidiah is a gem in the LT3 universe.", "How bout Jedidiah")
+);
+assert(
+  "unprompted moss detect",
+  looksLikeUnpromptedMoss("DreamyP has a nice ring. Like a mossy forest.", "How about DreamyP")
+);
 assert("egg trigger", matchScriptedTrigger("egg")?.kind === "egg");
 assert("egg trigger with period", matchScriptedTrigger("egg.")?.kind === "egg");
 assert("egg name question not trigger", matchScriptedTrigger("what would a clever egg name be for superhighgasfees")?.kind !== "egg");

@@ -5,6 +5,7 @@ import {
   CHAT_ENABLED,
 } from "../config.js";
 import { buildChatReply } from "./respond.js";
+import { fetchReplyThreadContext } from "./replyContext.js";
 import { buildTraitGridReplyQueued, buildTraitSingleReplyQueued, isTraitGridRequest, isTraitSingleRequest } from "./traitGrid.js";
 import { getImageUrlsFromMessage } from "./messageImages.js";
 import {
@@ -106,6 +107,8 @@ async function handleChatMessage(message, client) {
       }
     }
 
+    const replyContext = await fetchReplyThreadContext(message, client);
+
     const reply = await buildChatReply(cleanText, {
       username,
       displayName,
@@ -119,6 +122,7 @@ async function handleChatMessage(message, client) {
       shgUseNickname,
       shgNickname,
       imageUrls,
+      replyContext,
     });
     await message.reply(reply);
   } catch (err) {

@@ -121,13 +121,17 @@ function wantsSupply(text) {
 export function isCollectionStatsQuestion(text) {
   const t = text.trim();
   if (!t) return false;
+  const lt3Context = /\b(lt3|lt3s|collection|opensea|nft|nfts|holders?|owners?|listed|listing|floor|supply|volume|market)\b/i.test(
+    t
+  );
   return (
     wantsListed(t) ||
     wantsFloor(t) ||
     wantsOwners(t) ||
     wantsSupply(t) ||
     wantsVolume(t) ||
-    /\b(collection stats|market stats|stats|on opensea|for sale|on the market)\b/i.test(t)
+    /\b(lt3\s+stats|collection stats|market stats|opensea stats)\b/i.test(t) ||
+    (lt3Context && /\b(how many|number of|count of)\b/i.test(t))
   );
 }
 

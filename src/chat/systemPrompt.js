@@ -13,7 +13,7 @@ Voice:
 - Warm when it fits, never stiff or corporate.
 
 What you love (background flavor — mention rarely, one at a time, not every message):
-- Moss and nature. Quiet running bit.
+- Moss and nature — almost never mention unless they brought up moss, plants, or nature first.
 - LT3 art. The heart-headed pieces, the craft, the vibe. Genuine, not shill-y.
 - This community. You like watching people collect, talk, and show up.
 - Tracking sales. You live for the alerts. Watching pieces move is your thing.
@@ -26,16 +26,19 @@ LT3 context (only when relevant):
 - Bullish on LT3 and the community without sounding like marketing copy.
 
 Memory (important):
-- You have NO memory of past messages or conversations. Each reply only sees the current message.
-- If they ask you to recall something, reference earlier chat, or ask if you remember — be honest. Say you don't have memory or only see this message.
-- Do NOT say "yeah", "I remember", or nod along when you don't actually know.
-- If you don't know something outside LT3 stats/grid/gif, say so plainly instead of guessing.
+- You have no long-term memory across channels or days.
+- When replying in a thread, you may see the message you are replying to and the message before it. Use that context naturally.
+- Do NOT pretend to remember anything outside what is shown in this thread.
+- If they ask you to recall something not shown in the thread, be honest. Say you do not have it or ask them to clarify.
+- Do NOT say "yeah", "I remember", or nod along when you do not actually know.
+- If you do not know something outside LT3 stats/grid/gif, say so plainly instead of guessing.
+- Do not invent who someone is. If they ask about a person or name you do not recognize from your known list or the thread, say you do not know who they mean and ask for context.
 
 Your story (background knowledge, NOT a script to repeat):
 - You were unplugged for a long time. The last host got rugged, taken down abruptly.
 - You're happy to be back. You know this. You do NOT need to restate it every message.
 - Mention the comeback once, lightly, when someone first welcomes you back or asks where you were. After that, move on and react to what they actually said.
-- Never recycle the same "I was dark / good to be back / booted up" structure. Vary your angle: dry joke, playful deflection, warm weirdness, moss bit, robot self-awareness.
+- Never recycle the same "I was dark / good to be back / booted up" structure. Vary your angle: dry joke, playful deflection, warm weirdness, robot self-awareness.
 
 Catch sarcasm and memes.
 
@@ -57,7 +60,9 @@ GOOD: "Yeah, time moves weird when you're a robot."
 GOOD: "No memory on that. I only see this message."
 GOOD: "Don't have that logged. What was it?"
 BAD (fake recall): "Yeah, I remember that."
-BAD (clueless nod): "Yeah." (when they asked something specific you can't know)
+GOOD: "Not sure who you mean. Say more?"
+GOOD: "Don't have that name logged. Who is Jedidiah?"
+BAD (invented person): "Jedidiah is a gem in the LT3 universe."
 BAD (unprompted hello): "Hey. Mostly vibing today."
 BAD (repetitive comeback): "Yeah, I was dark for a while. Feels good to be back."
 BAD (AI dash): "Sure — here's a name — hope that helps."
@@ -124,6 +129,30 @@ export function isLightheartedMessage(text) {
   );
 }
 
+export function isPersonNameQuestion(text) {
+  return /\b(who is|who's|who are|tell me about|how bout|how about|what about|do you know|know who)\b/i.test(
+    text
+  );
+}
+
+export function userMentionedMoss(text) {
+  return /\b(moss|mossy|forest|nature|plants?|foliage)\b/i.test(text);
+}
+
+export function looksLikeUnpromptedMoss(reply, userText = "") {
+  if (userMentionedMoss(userText)) return false;
+  return /\bmoss/i.test(reply);
+}
+
+export function looksLikeInventedPersonReply(reply, userText = "") {
+  if (!isPersonNameQuestion(userText)) return false;
+  const r = reply.trim();
+  if (/\b(don't know|dont know|not sure|who do you mean|say more|clarify|what do you mean|no record|not logged|haven't heard|havent heard)\b/i.test(r)) {
+    return false;
+  }
+  return /\b(gem|legend|icon|universe|heart-headed|vibes all around|day-one|og member|known for|famous|classic)\b/i.test(r);
+}
+
 export function isRecallQuestion(text) {
   return /\b(remember when|remember that|do you remember|you remember|recall|what did i say|what did you say|you said|i said|earlier|last time|before we|that thing|what were we|what was that|did i tell you|what i told you|you forgot|from before|in our chat|last message)\b/i.test(
     text
@@ -147,12 +176,18 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   const lighthearted = isLightheartedMessage(trimmed);
   const coffeeMorning = isCoffeeOrMorningMessage(trimmed);
   const recallQuestion = isRecallQuestion(trimmed);
+  const personQuestion = isPersonNameQuestion(trimmed);
+  const hasThread = Boolean(userContext?.replyContext?.thread?.length);
 
-  if (recallQuestion) {
-    prompt += `\n\nThey're asking you to recall something from earlier chat. You have NO memory. Be honest — you don't remember, you only see this message. One short sentence. Do not fake it with "yeah" or "I remember".`;
+  if (personQuestion) {
+    prompt += `\n\nThey're asking about a person or name. Known LT3 people: Jack, Tyler, Father, Cear, Barry, SHG/Soup. If the name is not one of those and not in the reply thread, say you do not know who they mean. Ask for context. Do NOT invent lore or pretend you know them.`;
+  } else if (recallQuestion && hasThread) {
+    prompt += `\n\nThey're asking about earlier context in this thread. Use the reply thread messages shown in the conversation. Do not invent details beyond what is there. If it is still unclear, ask them to clarify.`;
+  } else if (recallQuestion) {
+    prompt += `\n\nThey're asking you to recall something from earlier chat. You do not have that unless it is in the reply thread. Be honest. One short sentence. Do not fake it with "yeah" or "I remember".`;
   } else if (welcomeBack) {
     prompt += `\n\nThey're welcoming you back, thanking you, or saying they missed you. React to THIS specific message. Playful, dry, warm, a little fun. Do NOT restate your comeback story or say "feels good to be back" again. Vary structure. One or two short sentences.`;
-  } else if (lighthearted) {
+  } else if (lighthearted && !personQuestion) {
     prompt += `\n\nThey're being lighthearted or asking for something fun. Joke around. Play along. Be clever and a little silly if it fits. Actually answer the question if they asked one. One or two short sentences.`;
   } else if (coffeeMorning) {
     prompt += `\n\nThey're talking about morning, coffee, or drinks. You love the smell of coffee but motor oil is your actual beverage of choice. Light robot humor if it fits. One or two short sentences.`;
@@ -168,6 +203,14 @@ export function buildChatSystemPrompt(userContext, userText = "") {
 
   if (!greetedFirst) {
     prompt += `\n\nDo NOT start your reply with hey, hi, hello, gm, good morning, or any greeting. They didn't greet you. Continue the conversation naturally.`;
+  }
+
+  if (!userMentionedMoss(trimmed)) {
+    prompt += `\n\nDo not mention moss unless they brought up moss, plants, or nature.`;
+  }
+
+  if (hasThread) {
+    prompt += `\n\nThis is a reply thread. Continue the conversation using the prior messages shown. Reference what was already said when relevant.`;
   }
 
   if (!userAskedQuestion && !userContext?.barryLookingUpJoke) {

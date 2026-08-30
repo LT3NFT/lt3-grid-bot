@@ -22,6 +22,8 @@ import {
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
+  looksLikeUnpromptedMoss,
+  looksLikeInventedPersonReply,
   userGreetedFirst,
 } from "./systemPrompt.js";
 import { looksCutOff } from "./sanitize.js";
@@ -43,18 +45,27 @@ function getVisionClient() {
   return visionClient;
 }
 
-async function callModel(system, userText, { temperature = 0.88 } = {}) {
+async function callModel(system, userText, { temperature = 0.88, replyContext = null } = {}) {
   const openai = getClient();
   if (!openai) return null;
+
+  /** @type {Array<{ role: "system"|"user"|"assistant", content: string }>} */
+  const messages = [{ role: "system", content: system }];
+
+  if (replyContext?.thread?.length) {
+    for (const entry of replyContext.thread) {
+      if (!entry.content) continue;
+      messages.push({ role: entry.role, content: entry.content.slice(0, 400) });
+    }
+  }
+
+  messages.push({ role: "user", content: userText.slice(0, 500) });
 
   const completion = await openai.chat.completions.create({
     model: CHAT_LLM_MODEL,
     temperature,
     max_tokens: 80,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: userText.slice(0, 500) },
-    ],
+    messages,
   });
 
   return completion.choices?.[0]?.message?.content?.trim() || null;
@@ -77,8 +88,9 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
   const lighthearted = isLightheartedMessage(userText);
   const greetedFirst = userGreetedFirst(userText);
   const temp = welcomeBack || lighthearted ? 0.95 : 0.88;
+  const replyContext = userContext?.replyContext ?? null;
 
-  let text = await callModel(system, userText, { temperature: temp });
+  let text = await callModel(system, userText, { temperature: temp, replyContext });
 
   if (
     text &&
@@ -87,12 +99,18 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       looksLikeCluelessAgreement(text, userText) ||
       looksLikeRepetitiveComeback(text) ||
       looksLikePoetrySpam(text) ||
+      looksLikeUnpromptedMoss(text, userText) ||
+      looksLikeInventedPersonReply(text, userText) ||
       (!greetedFirst && looksLikeUnpromptedGreeting(text)) ||
       looksCutOff(text) ||
       (isGreeting && looksTooShort(text)) ||
       text.length > cap + 15)
   ) {
-    const hint = looksLikeCluelessAgreement(text, userText)
+    const hint = looksLikeInventedPersonReply(text, userText)
+      ? "You do not know that person. Say you do not know who they mean and ask for context. Do not invent lore."
+      : looksLikeUnpromptedMoss(text, userText)
+        ? "Do not mention moss unless they brought it up. Reply again without moss."
+      : looksLikeCluelessAgreement(text, userText)
       ? "You don't have memory and can't know that. Be honest — say you don't remember or only see this message. No fake yeah."
       : looksCutOff(text)
       ? `Reply got cut off. One or two COMPLETE sentences under ${cap} characters. End on a period.`
@@ -107,7 +125,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
           : looksLikeRepetitiveComeback(text)
             ? "Comeback cliché. Skip the 'good to be back' script. Say something fresh and specific to their message."
             : "Too generic or boring. Add dry humor or quiet introspection. Still short. Not a poem.";
-    text = await callModel(`${system}\n\n${hint}`, userText, { temperature: temp });
+    text = await callModel(`${system}\n\n${hint}`, userText, { temperature: temp, replyContext });
   }
 
   if (
@@ -115,13 +133,14 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
     (looksLikeAssistantReply(text) ||
       looksLikeBoringReply(text) ||
       looksLikeCluelessAgreement(text, userText) ||
+      looksLikeInventedPersonReply(text, userText) ||
       (welcomeBack && looksLikeRepetitiveComeback(text)) ||
       (!greetedFirst && looksLikeUnpromptedGreeting(text)))
   ) {
     text = await callModel(
       `${system}\n\nLast try: fun, specific, not a template. Match their energy without repeating your backstory.`,
       userText,
-      { temperature: temp }
+      { temperature: temp, replyContext }
     );
   }
 
