@@ -15,6 +15,7 @@ import { gridCommandData, handleGridCommand } from "./commands/grid.js";
 import { gifCommandData, handleGifCommand } from "./commands/gif.js";
 import { randomCommandData, handleRandomCommand } from "./commands/random.js";
 import { randomgridCommandData, handleRandomgridCommand } from "./commands/randomgrid.js";
+import { rarityCommandData, handleRarityCommand } from "./commands/rarity.js";
 import { wireChat } from "./chat/handler.js";
 
 export function createBotClient() {
@@ -35,7 +36,7 @@ export async function registerGuildCommands() {
   await rest.put(Routes.applicationCommands(DISCORD_APPLICATION_ID), { body: [] });
 
   return rest.put(Routes.applicationGuildCommands(DISCORD_APPLICATION_ID, DISCORD_GUILD_ID), {
-    body: [gridCommandData, gifCommandData, randomCommandData, randomgridCommandData],
+    body: [gridCommandData, gifCommandData, randomCommandData, randomgridCommandData, rarityCommandData],
   });
 }
 
@@ -47,7 +48,7 @@ async function deferOrExplain(interaction) {
     console.error("deferReply failed", err);
     try {
       await interaction.reply({
-        content: "Bot is reconnecting — wait 10 seconds and try a fresh `/grid`, `/gif`, `/random`, or `/randomgrid`.",
+        content: "Bot is reconnecting — wait 10 seconds and try a fresh `/grid`, `/gif`, `/random`, `/randomgrid`, or `/rarity`.",
         ephemeral: true,
       });
     } catch {
@@ -84,7 +85,8 @@ export function wireBot(client) {
       interaction.commandName !== "grid" &&
       interaction.commandName !== "gif" &&
       interaction.commandName !== "random" &&
-      interaction.commandName !== "randomgrid"
+      interaction.commandName !== "randomgrid" &&
+      interaction.commandName !== "rarity"
     ) {
       return;
     }
@@ -105,6 +107,9 @@ export function wireBot(client) {
           break;
         case "random":
           run = handleRandomCommand(interaction);
+          break;
+        case "rarity":
+          run = handleRarityCommand(interaction);
           break;
         default:
           run = handleRandomgridCommand(interaction);

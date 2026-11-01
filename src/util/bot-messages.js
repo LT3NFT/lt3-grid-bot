@@ -69,3 +69,15 @@ export function pickTraitRandomMessage(traitType, traitValue, tokenId) {
     .replaceAll("{traitValue}", traitValue)
     .replaceAll("{tokenId}", String(tokenId));
 }
+
+const RARITY_MESSAGES = [
+  "Beep boop. LT3 #{tokenId}, taken apart layer by layer. 🤖",
+  "Beep boop. Rarity scan complete for LT3 #{tokenId}. 🤖",
+  "Beep boop. I peeled LT3 #{tokenId} apart. Every layer accounted for. 🤖",
+];
+
+/** @param {{ tokenId: string }} result */
+export function pickRarityMessage(result) {
+  const template = RARITY_MESSAGES[Math.floor(Math.random() * RARITY_MESSAGES.length)];
+  return template.replaceAll("{tokenId}", String(result.tokenId));
+}

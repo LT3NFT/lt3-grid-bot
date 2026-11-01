@@ -5,10 +5,13 @@ import {
   DISCORD_GUILD_ID,
   DISCORD_TOKEN,
 } from "../src/config.js";
-import { TOOLS_REMINDER_MESSAGE } from "../src/util/toolsReminderMessage.js";
+import {
+  buildToolsReminderEmbed,
+  fetchGuildCommandIdMap,
+} from "../src/util/toolsReminderMessage.js";
 
 const CHANNEL_ID = String(process.env.DISCORD_HUDDLE_CHANNEL_ID || "").trim();
-const CHANNEL_NAME = String(process.env.DISCORD_HUDDLE_CHANNEL_NAME || "thehuddle")
+const CHANNEL_NAME = String(process.env.DISCORD_HUDDLE_CHANNEL_NAME || "the-huddle")
   .trim()
   .toLowerCase();
 
@@ -39,7 +42,9 @@ async function main() {
 
   try {
     const channel = await resolveHuddleChannel(client);
-    const sent = await channel.send(TOOLS_REMINDER_MESSAGE);
+    const idMap = await fetchGuildCommandIdMap();
+    const embed = buildToolsReminderEmbed({ idMap });
+    const sent = await channel.send({ embeds: [embed] });
     console.log(`Posted tools reminder to #${channel.name} (${channel.id}) — message ${sent.id}`);
   } finally {
     await client.destroy();

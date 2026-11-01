@@ -92,6 +92,13 @@ export const TRAIT_GRID_IMAGE_CONCURRENCY = Number(process.env.TRAIT_GRID_IMAGE_
 export const TRAIT_SINGLE_DECODE_LONG_EDGE = Number(process.env.TRAIT_SINGLE_DECODE_LONG_EDGE) || 2048;
 export const TRAIT_SINGLE_JPEG_QUALITY = Number(process.env.TRAIT_SINGLE_JPEG_QUALITY) || 95;
 
+/** /rarity drives the live lt3tools Rarity Breakdown page in headless Chrome. */
+export const RARITY_PAGE_URL = String(
+  process.env.RARITY_PAGE_URL || "https://lt3tools.com/tools/trait-breakdown.html"
+).trim();
+export const RARITY_FPS = Number(process.env.RARITY_FPS) || 30;
+export const RARITY_TIMEOUT_MS = Number(process.env.RARITY_TIMEOUT_MS) || 180_000;
+
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 export const DISCORD_APPLICATION_ID = String(process.env.DISCORD_APPLICATION_ID || "").trim();
 export const DISCORD_GUILD_ID = String(process.env.DISCORD_GUILD_ID || "").trim();
