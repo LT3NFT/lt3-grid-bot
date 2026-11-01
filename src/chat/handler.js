@@ -79,7 +79,6 @@ async function handleChatMessage(message, client) {
 
   try {
     if (imageUrls.length === 0) {
-      const pending = await message.react("⏳").catch(() => null);
       try {
         if (isTraitGridRequest(cleanText)) {
           const gridReply = await buildTraitGridReplyQueued(cleanText);
@@ -102,8 +101,6 @@ async function handleChatMessage(message, client) {
           err instanceof Error && err.message ? err.message : "Could not pull that LT3.";
         await message.reply(msg);
         return;
-      } finally {
-        if (pending) await pending.remove().catch(() => {});
       }
     }
 
