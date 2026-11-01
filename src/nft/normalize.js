@@ -1,8 +1,10 @@
-const IPFS_HTTPS_GATEWAY = "https://ipfs.io/ipfs/";
+/** ipfs.io now serves a service-worker page instead of files, so it goes last. */
+const IPFS_HTTPS_GATEWAY = "https://alchemy.mypinata.cloud/ipfs/";
 const IPFS_GATEWAYS = [
   IPFS_HTTPS_GATEWAY,
-  "https://dweb.link/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
+  "https://dweb.link/ipfs/",
+  "https://ipfs.io/ipfs/",
 ];
 
 export function upgradeImageUrlForHighRes(url, targetEdge = 2048) {

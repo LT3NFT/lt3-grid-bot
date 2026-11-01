@@ -23,12 +23,13 @@ function rankImageUrls(urls) {
     try {
       const host = new URL(url).hostname.toLowerCase();
       if (host.includes("nft2-cdn.alchemy.com")) return 0;
-      if (host.includes("cloudinary.com") && url.includes("convert-png")) return 1;
-      if (host.includes("cloudinary.com")) return 2;
-      if (host === "ipfs.io") return 4;
+      if (host === "alchemy.mypinata.cloud") return 1;
+      if (host.includes("cloudinary.com") && url.includes("convert-png")) return 2;
+      if (host.includes("cloudinary.com")) return 3;
       if (host.includes("pinata")) return 5;
       if (host === "dweb.link") return 6;
-      return 3;
+      if (host === "ipfs.io") return 7;
+      return 4;
     } catch {
       return 99;
     }

@@ -56,7 +56,7 @@ export function buildToolsReminderEmbed({ idMap }) {
   ].join("\n");
 
   const description = [
-    "Beep boop. Quick reminder of what I can do. 🤖",
+    "Beep boop. Quick reminder of what I can do.",
     "",
     commands,
     "",
@@ -65,7 +65,7 @@ export function buildToolsReminderEmbed({ idMap }) {
 
   return new EmbedBuilder()
     .setColor(parseEmbedColor(process.env.DISCORD_EMBED_COLOR))
-    .setTitle("LT3BOT Tool Check-In 🛠️")
+    .setTitle("LT3BOT Tool Check-In 🤖")
     .setURL(collectionActivityUrl())
     .setDescription(description);
 }

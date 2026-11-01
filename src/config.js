@@ -2,7 +2,7 @@ import "dotenv/config";
 
 export const LT3_CONTRACT_LC = "0x4ef6f6a7ee7d1cf7f1f7bfad2ba56baab868de48".toLowerCase();
 
-export const MAX_NFT_COUNT = 110;
+export const MAX_NFT_COUNT = Number(process.env.MAX_NFT_COUNT) || 250;
 export const MAX_NFT_OWNER_PAGES = 250;
 export const MAX_WALLET_INPUT_CHARS = 512;
 

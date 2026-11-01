@@ -141,6 +141,7 @@ export function normalizeOpenSeaNft(nft) {
     identifier: tokenId,
     image_url: nft?.image_url,
     display_image_url: nft?.display_image_url,
+    original_image_url: nft?.original_image_url,
     image: nft?.image,
     contract: { address: LT3_CONTRACT_LC },
   };
