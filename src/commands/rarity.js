@@ -10,7 +10,7 @@ import { publicSlashCommandDefaults } from "./public-defaults.js";
 export const rarityCommandData = {
   ...publicSlashCommandDefaults,
   name: "rarity",
-  description: "Rarity Breakdown video for one LT3 — every layer and how rare it is",
+  description: "Rarity Breakdown image for one LT3 — every layer and how rare it is",
   options: [
     {
       name: "token",
@@ -93,8 +93,7 @@ export async function handleRarityCommand(interaction) {
 const STAGE_TEXT = {
   open: "Opening the Rarity Breakdown",
   load: "Separating the layers",
-  frames: "Rendering",
-  encode: "Encoding the video",
+  still: "Saving the breakdown",
 };
 const MIN_EDIT_GAP_MS = 4_000;
 
@@ -126,8 +125,7 @@ function createStageProgress(interaction, tokenId) {
     show,
     onStage: ({ step, percent }) => {
       const base = STAGE_TEXT[step] || "Working";
-      const suffix = step === "frames" && Number.isFinite(percent) ? ` ${percent}%` : "";
-      show(`Beep boop. LT3 #${tokenId}: ${base}${suffix}…`);
+      show(`Beep boop. LT3 #${tokenId}: ${base}…`);
     },
     stop: () => {
       stopped = true;

@@ -33,18 +33,21 @@ cd "$APP"
 
 # Keep Discord wait windows happy on small VMs (override anytime in .env).
 touch .env
-for line in \
-  'RARITY_FPS=20' \
-  'RARITY_WIDTH=1280' \
-  'RARITY_HEIGHT=720' \
-  'RARITY_TIMEOUT_MS=600000'
-do
-  key="${line%%=*}"
-  if ! grep -q "^${key}=" .env; then
-    echo "$line" >> .env
-    echo "    added $line to .env"
-  fi
-done
+# Prefer the PNG still defaults. Rewrite older video-oriented values from prior deploys.
+touch .env
+python3 - <<'PY'
+from pathlib import Path
+p = Path(".env")
+text = p.read_text() if p.exists() else ""
+lines = [ln for ln in text.splitlines() if not ln.startswith(("RARITY_FPS=", "RARITY_WIDTH=", "RARITY_HEIGHT=", "RARITY_TIMEOUT_MS="))]
+lines += [
+    "RARITY_WIDTH=1920",
+    "RARITY_HEIGHT=1080",
+    "RARITY_TIMEOUT_MS=180000",
+]
+p.write_text("\n".join(lines).rstrip() + "\n")
+print("    set RARITY_WIDTH=1920 RARITY_HEIGHT=1080 RARITY_TIMEOUT_MS=180000")
+PY
 
 echo "==> npm ci (also downloads headless Chrome)"
 npm ci --no-audit --no-fund

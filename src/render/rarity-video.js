@@ -1,11 +1,7 @@
-import { spawn } from "child_process";
-import { mkdtemp, readFile, rm } from "fs/promises";
-import { tmpdir } from "os";
-import path from "path";
 import puppeteer from "puppeteer";
+import sharp from "sharp";
 import {
   MAX_DISCORD_FILE_BYTES,
-  RARITY_FPS,
   RARITY_HEIGHT,
   RARITY_PAGE_URL,
   RARITY_TIMEOUT_MS,
@@ -13,21 +9,10 @@ import {
 } from "../config.js";
 
 const SUPPLY = 5555;
-const FRAMES_PER_BATCH = 10;
-const JPEG_QUALITY = 0.88;
 /** Chrome holds a few hundred MB, so let it go when nobody has asked for a while. */
 const IDLE_CLOSE_MS = 20 * 60 * 1000;
 /** Reload the tool page now and then so site updates reach the bot. */
 const PAGE_MAX_AGE_MS = 60 * 60 * 1000;
-
-/** Larger CRF / smaller frame on each retry until the MP4 fits Discord's upload cap. */
-function encodeTargets(exportHeight) {
-  return [
-    { crf: 23, height: exportHeight },
-    { crf: 26, height: Math.min(exportHeight, 720) },
-    { crf: 28, height: 540 },
-  ];
-}
 
 let browserPromise = null;
 let warmPage = null;
@@ -116,10 +101,10 @@ export function parseRarityTokenId(raw) {
 }
 
 /**
- * Runs the tool's own load() for the token, then switches the canvas to export size.
- * Everything referenced here (els, state, load, stopPreview, ...) is the page's top-level script scope.
+ * Load the token on the live tool page, then paint the same still frame Export PNG uses
+ * (`stillFrame = true` at `outroAt() - 0.01` — every card landed, before the fall).
  */
-async function prepareBreakdown(page, tokenId, width, height) {
+async function prepareAndCaptureStill(page, tokenId, width, height) {
   return page.evaluate(
     async (id, w, h) => {
       exporting = false;
@@ -129,6 +114,7 @@ async function prepareBreakdown(page, tokenId, width, height) {
       if (!state.ready || state.tokenId !== id) {
         return { ok: false, error: els.status.textContent || `Could not load LT3 #${id}.` };
       }
+
       exporting = true;
       canvas.width = w;
       canvas.height = h;
@@ -136,9 +122,15 @@ async function prepareBreakdown(page, tokenId, width, height) {
       sceneKey = "";
       fieldCache = null;
       fieldKey = "";
+
+      stillFrame = true;
+      paint(outroAt() - 0.01, w, h);
+      stillFrame = false;
+
+      const dataUrl = canvas.toDataURL("image/png");
       return {
         ok: true,
-        durationSec: state.durationSec,
+        pngBase64: dataUrl.slice("data:image/png;base64,".length),
         rank: state.rank,
         total: state.total,
         band: state.band,
@@ -151,90 +143,34 @@ async function prepareBreakdown(page, tokenId, width, height) {
   );
 }
 
-async function captureFrames(page, durationSec, fps, width, height, onFrames) {
-  const frameCount = Math.max(2, Math.round(durationSec * fps));
-  const frames = [];
-  for (let start = 0; start <= frameCount; start += FRAMES_PER_BATCH) {
-    const end = Math.min(frameCount, start + FRAMES_PER_BATCH - 1);
-    const batch = await page.evaluate(
-      (from, to, total, dur, w, h, quality) => {
-        const out = [];
-        for (let f = from; f <= to; f += 1) {
-          paint((f / total) * dur, w, h);
-          out.push(canvas.toDataURL("image/jpeg", quality).slice("data:image/jpeg;base64,".length));
-        }
-        return out;
-      },
-      start,
-      end,
-      frameCount,
-      durationSec,
-      width,
-      height,
-      JPEG_QUALITY
-    );
-    for (const b64 of batch) frames.push(Buffer.from(b64, "base64"));
-    onFrames?.(frames.length, frameCount + 1);
+async function fitDiscordPng(pngBuffer) {
+  if (pngBuffer.length <= MAX_DISCORD_FILE_BYTES) {
+    return { buffer: pngBuffer, extension: "png", mime: "image/png" };
   }
-  return frames;
-}
 
-function encodeMp4(frames, fps, { crf, height }, exportHeight, outPath) {
-  return new Promise((resolve, reject) => {
-    const args = [
-      "-y",
-      "-f", "image2pipe",
-      "-c:v", "mjpeg",
-      "-framerate", String(fps),
-      "-i", "pipe:0",
-      ...(height !== exportHeight ? ["-vf", `scale=-2:${height}:flags=lanczos`] : []),
-      "-c:v", "libx264",
-      "-preset", "superfast",
-      "-tune", "animation",
-      "-crf", String(crf),
-      "-pix_fmt", "yuv420p",
-      "-movflags", "+faststart",
-      outPath,
-    ];
-    const proc = spawn(process.env.FFMPEG_PATH || "ffmpeg", args, { stdio: ["pipe", "ignore", "pipe"] });
-    let stderr = "";
-    proc.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    proc.on("error", (err) => {
-      if (err.code === "ENOENT") {
-        reject(new Error("ffmpeg is not installed on the server — contact the team."));
-        return;
-      }
-      reject(err);
-    });
-    proc.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`ffmpeg failed (${code}): ${stderr.slice(-400)}`));
-    });
+  let quality = 92;
+  while (quality >= 70) {
+    const jpg = await sharp(pngBuffer).jpeg({ quality, mozjpeg: true }).toBuffer();
+    if (jpg.length <= MAX_DISCORD_FILE_BYTES) {
+      return { buffer: jpg, extension: "jpg", mime: "image/jpeg" };
+    }
+    quality -= 8;
+  }
 
-    (async () => {
-      for (const frame of frames) {
-        if (!proc.stdin.write(frame)) {
-          await new Promise((res) => proc.stdin.once("drain", res));
-        }
-      }
-      proc.stdin.end();
-    })().catch((err) => {
-      proc.kill("SIGKILL");
-      reject(err);
-    });
-  });
+  const scaled = await sharp(pngBuffer)
+    .resize({ width: Math.floor(RARITY_WIDTH * 0.85), withoutEnlargement: true })
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer();
+  return { buffer: scaled, extension: "jpg", mime: "image/jpeg" };
 }
 
 /**
  * @param {string} tokenId
- * @param {(stage: { step: "open" | "load" | "frames" | "encode", percent?: number }) => void} [onProgress]
+ * @param {(stage: { step: "open" | "load" | "still" }) => void} [onProgress]
  */
-async function renderRarityVideo(tokenId, onProgress) {
+async function renderRarityStill(tokenId, onProgress) {
   const width = Math.max(640, Math.floor(RARITY_WIDTH));
   const height = Math.max(360, Math.floor(RARITY_HEIGHT));
-  const fps = Math.max(10, Math.min(30, Math.floor(RARITY_FPS)));
   const t0 = Date.now();
   const timings = [];
   const mark = (label) => timings.push(`${label} ${((Date.now() - t0) / 1000).toFixed(1)}s`);
@@ -244,52 +180,40 @@ async function renderRarityVideo(tokenId, onProgress) {
   let { page, warm } = await getToolPage();
   mark(warm ? "page(warm)" : "page(cold)");
 
-  const workDir = await mkdtemp(path.join(tmpdir(), "lt3-rarity-"));
   try {
     onProgress?.({ step: "load" });
     let info;
     try {
-      info = await prepareBreakdown(page, tokenId, width, height);
+      info = await prepareAndCaptureStill(page, tokenId, width, height);
     } catch (err) {
       if (!warm) throw err;
-      // A stale warm page can break after Chrome hiccups — retry once on a fresh one.
       console.warn("[rarity] warm page failed, reloading", err?.message);
       warmPage = null;
       ({ page } = await getToolPage());
-      info = await prepareBreakdown(page, tokenId, width, height);
+      info = await prepareAndCaptureStill(page, tokenId, width, height);
     }
     if (!info.ok) throw new Error(info.error);
-    mark("layers");
+    mark("layers+still");
 
-    const frames = await captureFrames(page, info.durationSec, fps, width, height, (done, total) => {
-      onProgress?.({ step: "frames", percent: Math.round((done / total) * 100) });
-    });
-    mark(`frames(${frames.length})`);
+    onProgress?.({ step: "still" });
+    const raw = Buffer.from(info.pngBase64, "base64");
+    const fitted = await fitDiscordPng(raw);
+    mark(`${fitted.extension} ${(fitted.buffer.length / 1048576).toFixed(2)}MB`);
+    console.log(`[rarity] #${tokenId} still ${width}x${height} — ${timings.join(" · ")}`);
 
-    onProgress?.({ step: "encode" });
-    const outPath = path.join(workDir, `lt3-rarity-breakdown-${tokenId}.mp4`);
-    for (const target of encodeTargets(height)) {
-      await encodeMp4(frames, fps, target, height, outPath);
-      const buffer = await readFile(outPath);
-      mark(`encode crf${target.crf}@${target.height}p ${(buffer.length / 1048576).toFixed(2)}MB`);
-      if (buffer.length <= MAX_DISCORD_FILE_BYTES) {
-        console.log(`[rarity] #${tokenId} ${width}x${height}@${fps}fps — ${timings.join(" · ")}`);
-        return {
-          buffer,
-          filename: `lt3-rarity-breakdown-${tokenId}.mp4`,
-          tokenId,
-          rank: info.rank,
-          total: info.total,
-          band: info.band,
-        };
-      }
-    }
-    throw new Error(`LT3 #${tokenId}'s breakdown came out too large for Discord.`);
+    return {
+      buffer: fitted.buffer,
+      filename: `lt3-rarity-breakdown-${tokenId}.${fitted.extension}`,
+      tokenId,
+      rank: info.rank,
+      total: info.total,
+      band: info.band,
+      mime: fitted.mime,
+    };
   } catch (err) {
     console.error(`[rarity] #${tokenId} failed after ${timings.join(" · ") || "start"}`);
     throw err;
   } finally {
-    await rm(workDir, { recursive: true, force: true }).catch(() => {});
     scheduleIdleClose();
   }
 }
@@ -298,13 +222,12 @@ export async function buildRarityVideoWithTimeout(tokenId, onProgress) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => {
-      // A wedged page would poison the next request, so start clean.
       void closeBrowser();
       reject(new Error("The rarity breakdown took too long — try again in a minute."));
     }, RARITY_TIMEOUT_MS);
   });
   try {
-    return await Promise.race([renderRarityVideo(tokenId, onProgress), timeout]);
+    return await Promise.race([renderRarityStill(tokenId, onProgress), timeout]);
   } finally {
     clearTimeout(timer);
   }

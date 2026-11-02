@@ -52,7 +52,7 @@ export function buildToolsReminderEmbed({ idMap }) {
     `${slashMention("gif", idMap)} — A flipbook GIF of your LT3s.`,
     `${slashMention("random", idMap)} — One random LT3 by trait.`,
     `${slashMention("randomgrid", idMap)} — A 3×3 trait grid.`,
-    `${slashMention("rarity", idMap)} — A rarity breakdown video of one LT3.`,
+    `${slashMention("rarity", idMap)} — A rarity breakdown of one LT3.`,
   ].join("\n");
 
   const description = [

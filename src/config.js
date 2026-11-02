@@ -96,12 +96,11 @@ export const TRAIT_SINGLE_JPEG_QUALITY = Number(process.env.TRAIT_SINGLE_JPEG_QU
 export const RARITY_PAGE_URL = String(
   process.env.RARITY_PAGE_URL || "https://lt3tools.com/tools/trait-breakdown.html"
 ).trim();
-/** 20fps keeps small VMs under Discord's wait window; raise to 30 on bigger boxes. */
-export const RARITY_FPS = Number(process.env.RARITY_FPS) || 20;
-export const RARITY_WIDTH = Number(process.env.RARITY_WIDTH) || 1280;
-export const RARITY_HEIGHT = Number(process.env.RARITY_HEIGHT) || 720;
-/** 10 minutes — first Chrome paint on a free-tier VM can be slow. */
-export const RARITY_TIMEOUT_MS = Number(process.env.RARITY_TIMEOUT_MS) || 600_000;
+/** Still-frame export size (same composition as the tool's Save PNG). */
+export const RARITY_WIDTH = Number(process.env.RARITY_WIDTH) || 1920;
+export const RARITY_HEIGHT = Number(process.env.RARITY_HEIGHT) || 1080;
+/** First Chrome paint on a free-tier VM can be slow; stills are much faster than video. */
+export const RARITY_TIMEOUT_MS = Number(process.env.RARITY_TIMEOUT_MS) || 180_000;
 
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 export const DISCORD_APPLICATION_ID = String(process.env.DISCORD_APPLICATION_ID || "").trim();
