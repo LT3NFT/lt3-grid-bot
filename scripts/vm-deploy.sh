@@ -49,16 +49,23 @@ done
 echo "==> npm ci (also downloads headless Chrome)"
 npm ci --no-audit --no-fund
 
-echo "==> Restarting bot so /rarity registers"
+pkill -f "scripts/check-rarity.js" 2>/dev/null || true
+echo "==> VM size: $(nproc) CPU, $(free -m | awk '/Mem:/ {print $2 " MB RAM, " $7 " MB free"}')"
+echo "==> Rendering a test /rarity video (don't run /rarity in Discord until this finishes)"
+if node scripts/check-rarity.js 4449; then
+  smoke="ok"
+else
+  smoke="failed"
+fi
+
+echo "==> Restarting bot"
 pm2 restart lt3-grid-bot --update-env
 sleep 8
 pm2 logs lt3-grid-bot --lines 40 --nostream | grep -E "Logged in|Slash commands synced|Failed" || true
 
-echo "==> Rendering a test /rarity video (can take a few minutes on this VM)"
-if node scripts/check-rarity.js 4449; then
+if [ "$smoke" = "ok" ]; then
   echo "==> Done. Try /rarity token:4449 in Discord."
 else
-  echo "==> Smoke test timed out or failed — /rarity is still registered."
-  echo "    Try /rarity in Discord anyway; if it fails, paste the pm2 logs."
+  echo "==> Test render failed — copy everything above and send it over."
   exit 1
 fi

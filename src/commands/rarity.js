@@ -4,7 +4,7 @@ import { buildRarityVideoWithTimeout, parseRarityTokenId } from "../render/rarit
 import { pickRarityMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runGifJob } from "../util/heavy-queue.js";
-import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
+import { safeEditReply } from "../util/safe-interaction.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
 
 export const rarityCommandData = {
@@ -48,19 +48,22 @@ export async function handleRarityCommand(interaction) {
     return;
   }
 
-  const stopProgress = startProgressUpdates(interaction, `Breaking down LT3 #${tokenId}`, 15_000);
+  const progress = createStageProgress(interaction, tokenId);
+  progress.show(`Beep boop. Breaking down LT3 #${tokenId}…`);
 
   try {
     await runGifJob(
       async () => {
         try {
-          const result = await buildRarityVideoWithTimeout(tokenId);
+          const result = await buildRarityVideoWithTimeout(tokenId, progress.onStage);
+          progress.stop();
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
           await safeEditReply(interaction, {
             content: pickRarityMessage(result),
             files: [attachment],
           });
         } catch (err) {
+          progress.stop();
           console.error("/rarity failed", err);
           const message =
             err instanceof Error && err.message
@@ -83,6 +86,52 @@ export async function handleRarityCommand(interaction) {
       content: "Something went wrong while building the breakdown.",
     });
   } finally {
-    stopProgress();
+    progress.stop();
   }
+}
+
+const STAGE_TEXT = {
+  open: "Opening the Rarity Breakdown",
+  load: "Separating the layers",
+  frames: "Rendering",
+  encode: "Encoding the video",
+};
+const MIN_EDIT_GAP_MS = 4_000;
+
+/** Edits the deferred reply with the current stage, at most once every few seconds. */
+function createStageProgress(interaction, tokenId) {
+  let stopped = false;
+  let lastText = "";
+  let lastAt = 0;
+  let pending = null;
+  let pendingTimer = null;
+
+  const flush = () => {
+    pendingTimer = null;
+    if (stopped || !pending || pending === lastText) return;
+    lastText = pending;
+    lastAt = Date.now();
+    void safeEditReply(interaction, { content: pending });
+  };
+
+  const show = (text) => {
+    if (stopped) return;
+    pending = text;
+    const wait = MIN_EDIT_GAP_MS - (Date.now() - lastAt);
+    if (wait <= 0) flush();
+    else if (!pendingTimer) pendingTimer = setTimeout(flush, wait);
+  };
+
+  return {
+    show,
+    onStage: ({ step, percent }) => {
+      const base = STAGE_TEXT[step] || "Working";
+      const suffix = step === "frames" && Number.isFinite(percent) ? ` ${percent}%` : "";
+      show(`Beep boop. LT3 #${tokenId}: ${base}${suffix}…`);
+    },
+    stop: () => {
+      stopped = true;
+      clearTimeout(pendingTimer);
+    },
+  };
 }

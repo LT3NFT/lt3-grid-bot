@@ -3,9 +3,17 @@ import { buildRarityVideoWithTimeout } from "../src/render/rarity-video.js";
 
 const tokenId = process.argv[2] || "4449";
 const started = Date.now();
+let lastLogged = -1;
 
 try {
-  const result = await buildRarityVideoWithTimeout(tokenId);
+  const result = await buildRarityVideoWithTimeout(tokenId, ({ step, percent }) => {
+    if (step !== "frames") {
+      console.log(`    ${step}… ${((Date.now() - started) / 1000).toFixed(0)}s`);
+    } else if (percent >= lastLogged + 25) {
+      lastLogged = percent;
+      console.log(`    frames ${percent}%… ${((Date.now() - started) / 1000).toFixed(0)}s`);
+    }
+  });
   const out = `/tmp/${result.filename}`;
   await writeFile(out, result.buffer);
   console.log(
