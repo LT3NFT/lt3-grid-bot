@@ -6,22 +6,24 @@ import puppeteer from "puppeteer";
 import {
   MAX_DISCORD_FILE_BYTES,
   RARITY_FPS,
+  RARITY_HEIGHT,
   RARITY_PAGE_URL,
   RARITY_TIMEOUT_MS,
+  RARITY_WIDTH,
 } from "../config.js";
 
 const SUPPLY = 5555;
-const EXPORT_W = 1920;
-const EXPORT_H = 1080;
-const FRAMES_PER_BATCH = 12;
-const JPEG_QUALITY = 0.95;
+const FRAMES_PER_BATCH = 8;
+const JPEG_QUALITY = 0.88;
 
 /** Larger CRF / smaller frame on each retry until the MP4 fits Discord's upload cap. */
-const ENCODE_TARGETS = [
-  { crf: 18, height: 1080 },
-  { crf: 23, height: 1080 },
-  { crf: 26, height: 720 },
-];
+function encodeTargets(exportHeight) {
+  return [
+    { crf: 23, height: exportHeight },
+    { crf: 26, height: Math.min(exportHeight, 720) },
+    { crf: 28, height: 540 },
+  ];
+}
 
 let browserPromise = null;
 
@@ -30,7 +32,15 @@ function getBrowser() {
     browserPromise = puppeteer
       .launch({
         headless: true,
-        args: ["--no-sandbox", "--disable-dev-shm-usage", "--mute-audio"],
+        args: [
+          "--no-sandbox",
+          "--disable-dev-shm-usage",
+          "--mute-audio",
+          "--disable-gpu",
+          "--disable-extensions",
+          "--disable-background-networking",
+          "--js-flags=--max-old-space-size=512",
+        ],
       })
       .then((browser) => {
         browser.on("disconnected", () => {
@@ -59,7 +69,7 @@ export function parseRarityTokenId(raw) {
  * Runs the tool's own load() for the token, then switches the canvas to export size.
  * Everything referenced here (els, state, load, stopPreview, ...) is the page's top-level script scope.
  */
-async function prepareBreakdown(page, tokenId) {
+async function prepareBreakdown(page, tokenId, width, height) {
   return page.evaluate(
     async (id, w, h) => {
       els.tokenInput.value = id;
@@ -85,12 +95,12 @@ async function prepareBreakdown(page, tokenId) {
       };
     },
     tokenId,
-    EXPORT_W,
-    EXPORT_H
+    width,
+    height
   );
 }
 
-async function captureFrames(page, durationSec, fps) {
+async function captureFrames(page, durationSec, fps, width, height) {
   const frameCount = Math.max(2, Math.round(durationSec * fps));
   const frames = [];
   for (let start = 0; start <= frameCount; start += FRAMES_PER_BATCH) {
@@ -108,8 +118,8 @@ async function captureFrames(page, durationSec, fps) {
       end,
       frameCount,
       durationSec,
-      EXPORT_W,
-      EXPORT_H,
+      width,
+      height,
       JPEG_QUALITY
     );
     for (const b64 of batch) frames.push(Buffer.from(b64, "base64"));
@@ -117,7 +127,7 @@ async function captureFrames(page, durationSec, fps) {
   return frames;
 }
 
-function encodeMp4(frames, fps, { crf, height }, outPath) {
+function encodeMp4(frames, fps, { crf, height }, exportHeight, outPath) {
   return new Promise((resolve, reject) => {
     const args = [
       "-y",
@@ -125,9 +135,9 @@ function encodeMp4(frames, fps, { crf, height }, outPath) {
       "-c:v", "mjpeg",
       "-framerate", String(fps),
       "-i", "pipe:0",
-      ...(height !== EXPORT_H ? ["-vf", `scale=-2:${height}:flags=lanczos`] : []),
+      ...(height !== exportHeight ? ["-vf", `scale=-2:${height}:flags=lanczos`] : []),
       "-c:v", "libx264",
-      "-preset", "medium",
+      "-preset", "veryfast",
       "-crf", String(crf),
       "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
@@ -165,26 +175,31 @@ function encodeMp4(frames, fps, { crf, height }, outPath) {
 }
 
 async function renderRarityVideo(tokenId) {
+  const width = Math.max(640, Math.floor(RARITY_WIDTH));
+  const height = Math.max(360, Math.floor(RARITY_HEIGHT));
+  const fps = Math.max(10, Math.min(30, Math.floor(RARITY_FPS)));
+
   const browser = await getBrowser();
   const page = await browser.newPage();
   const workDir = await mkdtemp(path.join(tmpdir(), "lt3-rarity-"));
   try {
-    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
-    await page.goto(RARITY_PAGE_URL, { waitUntil: "load", timeout: 30_000 });
+    await page.setViewport({ width: 960, height: 720, deviceScaleFactor: 1 });
+    page.setDefaultTimeout(120_000);
+    await page.goto(RARITY_PAGE_URL, { waitUntil: "domcontentloaded", timeout: 60_000 });
 
-    const info = await prepareBreakdown(page, tokenId);
+    const info = await prepareBreakdown(page, tokenId, width, height);
     if (!info.ok) throw new Error(info.error);
 
     const started = Date.now();
-    const frames = await captureFrames(page, info.durationSec, RARITY_FPS);
+    const frames = await captureFrames(page, info.durationSec, fps, width, height);
     console.log(
-      `[rarity] #${tokenId}: ${frames.length} frames @ ${RARITY_FPS}fps captured in ${Date.now() - started}ms`
+      `[rarity] #${tokenId}: ${frames.length} frames @ ${fps}fps ${width}x${height} captured in ${Date.now() - started}ms`
     );
     await page.close();
 
     const outPath = path.join(workDir, `lt3-rarity-breakdown-${tokenId}.mp4`);
-    for (const target of ENCODE_TARGETS) {
-      await encodeMp4(frames, RARITY_FPS, target, outPath);
+    for (const target of encodeTargets(height)) {
+      await encodeMp4(frames, fps, target, height, outPath);
       const buffer = await readFile(outPath);
       console.log(`[rarity] #${tokenId}: crf ${target.crf} @ ${target.height}p → ${buffer.length} bytes`);
       if (buffer.length <= MAX_DISCORD_FILE_BYTES) {
