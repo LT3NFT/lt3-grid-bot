@@ -1,10 +1,12 @@
 import { AttachmentBuilder, ApplicationCommandOptionType, MessageFlags } from "discord.js";
-import { DISCORD_GRID_CHANNEL_ID, GRID_COOLDOWN_MS } from "../config.js";
-import { buildRarityVideoWithTimeout, parseRarityTokenId } from "../render/rarity-video.js";
+import { DISCORD_GRID_CHANNEL_ID, GRID_COOLDOWN_MS, RARITY_TIMEOUT_MS } from "../config.js";
+import { parseRarityTokenId } from "../render/rarity-video.js";
 import { pickRarityMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runGifJob } from "../util/heavy-queue.js";
+import { runHeavyJob } from "../util/run-heavy-job.js";
 import { safeEditReply } from "../util/safe-interaction.js";
+import { createStageProgress } from "../util/stage-progress.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
 
 export const rarityCommandData = {
@@ -19,6 +21,12 @@ export const rarityCommandData = {
       required: true,
     },
   ],
+};
+
+const STAGE_TEXT = {
+  open: "Opening the Rarity Breakdown",
+  load: "Separating the layers",
+  still: "Saving the breakdown",
 };
 
 export async function handleRarityCommand(interaction) {
@@ -48,14 +56,25 @@ export async function handleRarityCommand(interaction) {
     return;
   }
 
-  const progress = createStageProgress(interaction, tokenId);
+  const progress = createStageProgress(interaction);
   progress.show(`Beep boop. Breaking down LT3 #${tokenId}…`);
 
   try {
     await runGifJob(
       async () => {
         try {
-          const result = await buildRarityVideoWithTimeout(tokenId, progress.onStage);
+          const result = await runHeavyJob(
+            "rarity",
+            { tokenId },
+            {
+              timeoutMs: RARITY_TIMEOUT_MS + 30_000,
+              onProgress: (stage) => {
+                const step = typeof stage === "object" ? stage?.step : stage;
+                const base = STAGE_TEXT[step] || "Working";
+                progress.show(`Beep boop. LT3 #${tokenId}: ${base}…`);
+              },
+            }
+          );
           progress.stop();
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
           await safeEditReply(interaction, {
@@ -74,9 +93,12 @@ export async function handleRarityCommand(interaction) {
       },
       {
         onQueued: (ahead) => {
-          void safeEditReply(interaction, {
-            content: `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`,
-          });
+          progress.show(
+            `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`
+          );
+        },
+        onStart: () => {
+          progress.show(`Beep boop. Breaking down LT3 #${tokenId}…`);
         },
       }
     );
@@ -88,48 +110,4 @@ export async function handleRarityCommand(interaction) {
   } finally {
     progress.stop();
   }
-}
-
-const STAGE_TEXT = {
-  open: "Opening the Rarity Breakdown",
-  load: "Separating the layers",
-  still: "Saving the breakdown",
-};
-const MIN_EDIT_GAP_MS = 4_000;
-
-/** Edits the deferred reply with the current stage, at most once every few seconds. */
-function createStageProgress(interaction, tokenId) {
-  let stopped = false;
-  let lastText = "";
-  let lastAt = 0;
-  let pending = null;
-  let pendingTimer = null;
-
-  const flush = () => {
-    pendingTimer = null;
-    if (stopped || !pending || pending === lastText) return;
-    lastText = pending;
-    lastAt = Date.now();
-    void safeEditReply(interaction, { content: pending });
-  };
-
-  const show = (text) => {
-    if (stopped) return;
-    pending = text;
-    const wait = MIN_EDIT_GAP_MS - (Date.now() - lastAt);
-    if (wait <= 0) flush();
-    else if (!pendingTimer) pendingTimer = setTimeout(flush, wait);
-  };
-
-  return {
-    show,
-    onStage: ({ step, percent }) => {
-      const base = STAGE_TEXT[step] || "Working";
-      show(`Beep boop. LT3 #${tokenId}: ${base}…`);
-    },
-    stop: () => {
-      stopped = true;
-      clearTimeout(pendingTimer);
-    },
-  };
 }

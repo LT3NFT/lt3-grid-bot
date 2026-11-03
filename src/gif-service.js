@@ -6,9 +6,9 @@ import {
 import { renderCollectionGif } from "./render/gif.js";
 import { resolveWalletInput, withTimeout } from "./util/wallet-resolve.js";
 
-async function buildGifFromCollection(collection) {
+async function buildGifFromCollection(collection, onProgress) {
   const { display, count, images } = collection;
-  const rendered = await renderCollectionGif(images);
+  const rendered = await renderCollectionGif(images, onProgress);
 
   return {
     display,
@@ -18,21 +18,27 @@ async function buildGifFromCollection(collection) {
   };
 }
 
-export async function buildGifForWalletInput(rawInput) {
+export async function buildGifForWalletInput(rawInput, onProgress) {
+  onProgress?.("wallet");
   const { address, display } = await resolveWalletInput(rawInput);
+  onProgress?.("fetch");
   const nfts = await fetchAllLt3NftsForOwner(address);
+  onProgress?.("images");
   const collection = await loadLt3CollectionFromNfts(nfts, address, display, { purpose: "gif" });
-  return buildGifFromCollection(collection);
+  return buildGifFromCollection(collection, onProgress);
 }
 
-export async function buildGifForWalletInputWithTimeout(rawInput) {
+export async function buildGifForWalletInputWithTimeout(rawInput, onProgress) {
+  onProgress?.("wallet");
   const { address, display } = await resolveWalletInput(rawInput);
+  onProgress?.("fetch");
   const nfts = await fetchAllLt3NftsForOwner(address);
 
   return withTimeout(
     (async () => {
+      onProgress?.("images");
       const collection = await loadLt3CollectionFromNfts(nfts, address, display, { purpose: "gif" });
-      return buildGifFromCollection(collection);
+      return buildGifFromCollection(collection, onProgress);
     })(),
     gifTimeoutForCount(nfts.length),
     "GIF generation timed out. Try again in a moment, or use /grid for a still image."

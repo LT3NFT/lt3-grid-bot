@@ -2,12 +2,15 @@ import { AttachmentBuilder, ApplicationCommandOptionType, MessageFlags } from "d
 import {
   DISCORD_GRID_CHANNEL_ID,
   GRID_COOLDOWN_MS,
+  gifTimeoutForCount,
+  MAX_NFT_COUNT,
 } from "../config.js";
-import { buildGifForWalletInputWithTimeout } from "../gif-service.js";
 import { pickGifMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runGifJob } from "../util/heavy-queue.js";
-import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
+import { runHeavyJob } from "../util/run-heavy-job.js";
+import { safeEditReply } from "../util/safe-interaction.js";
+import { createStageProgress, GIF_STAGE_TEXT } from "../util/stage-progress.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
 
 export const gifCommandData = {
@@ -46,20 +49,33 @@ export async function handleGifCommand(interaction) {
   }
 
   const wallet = interaction.options.getString("wallet", true);
-  const stopProgress = startProgressUpdates(interaction, "Building your GIF");
+  const progress = createStageProgress(interaction);
+  progress.show("Beep boop. Building your GIF…");
 
   try {
     await runGifJob(
       async () => {
         try {
-          const result = await buildGifForWalletInputWithTimeout(wallet);
+          const result = await runHeavyJob(
+            "gif",
+            { wallet },
+            {
+              timeoutMs: gifTimeoutForCount(MAX_NFT_COUNT),
+              onProgress: (stage) => {
+                const key = typeof stage === "string" ? stage : stage?.step;
+                const label = GIF_STAGE_TEXT[key] || "Working";
+                progress.show(`Beep boop. ${label}…`);
+              },
+            }
+          );
+          progress.stop();
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
-
           await safeEditReply(interaction, {
             content: pickGifMessage(),
             files: [attachment],
           });
         } catch (err) {
+          progress.stop();
           console.error("/gif failed", err);
           const message =
             err instanceof Error && err.message
@@ -70,9 +86,12 @@ export async function handleGifCommand(interaction) {
       },
       {
         onQueued: (ahead) => {
-          void safeEditReply(interaction, {
-            content: `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`,
-          });
+          progress.show(
+            `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`
+          );
+        },
+        onStart: () => {
+          progress.show("Beep boop. Building your GIF…");
         },
       }
     );
@@ -82,6 +101,6 @@ export async function handleGifCommand(interaction) {
       content: "Something went wrong while building your GIF.",
     });
   } finally {
-    stopProgress();
+    progress.stop();
   }
 }

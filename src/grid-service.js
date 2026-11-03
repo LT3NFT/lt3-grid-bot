@@ -84,13 +84,17 @@ export async function buildGridForWalletInput(rawInput) {
   return buildGridFromCollection(collection);
 }
 
-export async function buildGridForWalletInputWithTimeout(rawInput) {
+export async function buildGridForWalletInputWithTimeout(rawInput, onProgress) {
+  onProgress?.("wallet");
   const { address, display } = await resolveWalletInput(rawInput);
+  onProgress?.("fetch");
   const nfts = await fetchAllLt3NftsForOwner(address);
 
   return withTimeout(
     (async () => {
+      onProgress?.("images");
       const collection = await loadLt3CollectionFromNfts(nfts, address, display, { purpose: "grid" });
+      onProgress?.("compose");
       return buildGridFromCollection(collection);
     })(),
     gridTimeoutForCount(nfts.length),

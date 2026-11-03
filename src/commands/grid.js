@@ -2,13 +2,15 @@ import { AttachmentBuilder, ApplicationCommandOptionType, MessageFlags } from "d
 import {
   DISCORD_GRID_CHANNEL_ID,
   GRID_COOLDOWN_MS,
+  gridTimeoutForCount,
+  MAX_NFT_COUNT,
 } from "../config.js";
-import { buildGridForWalletInputWithTimeout } from "../grid-service.js";
 import { pickBotMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runGridJob } from "../util/heavy-queue.js";
-import { safeEditReply, startProgressUpdates } from "../util/safe-interaction.js";
-
+import { runHeavyJob } from "../util/run-heavy-job.js";
+import { safeEditReply } from "../util/safe-interaction.js";
+import { createStageProgress, GRID_STAGE_TEXT } from "../util/stage-progress.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
 
 export const gridCommandData = {
@@ -47,21 +49,33 @@ export async function handleGridCommand(interaction) {
   }
 
   const wallet = interaction.options.getString("wallet", true);
-  const stopProgress = startProgressUpdates(interaction, "Building your grid");
+  const progress = createStageProgress(interaction);
+  progress.show("Beep boop. Building your grid…");
 
   try {
     await runGridJob(
       async () => {
         try {
-          const result = await buildGridForWalletInputWithTimeout(wallet);
+          const result = await runHeavyJob(
+            "grid",
+            { wallet },
+            {
+              timeoutMs: gridTimeoutForCount(MAX_NFT_COUNT),
+              onProgress: (stage) => {
+                const key = typeof stage === "string" ? stage : stage?.step;
+                const label = GRID_STAGE_TEXT[key] || "Working";
+                progress.show(`Beep boop. ${label}…`);
+              },
+            }
+          );
+          progress.stop();
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
-          const summary = pickBotMessage();
-
           await safeEditReply(interaction, {
-            content: summary,
+            content: pickBotMessage(),
             files: [attachment],
           });
         } catch (err) {
+          progress.stop();
           console.error("/grid failed", err);
           const message =
             err instanceof Error && err.message
@@ -72,9 +86,12 @@ export async function handleGridCommand(interaction) {
       },
       {
         onQueued: (ahead) => {
-          void safeEditReply(interaction, {
-            content: `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`,
-          });
+          progress.show(
+            `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`
+          );
+        },
+        onStart: () => {
+          progress.show("Beep boop. Building your grid…");
         },
       }
     );
@@ -84,6 +101,6 @@ export async function handleGridCommand(interaction) {
       content: "Something went wrong while building your grid.",
     });
   } finally {
-    stopProgress();
+    progress.stop();
   }
 }

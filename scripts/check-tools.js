@@ -1,7 +1,8 @@
 /**
- * Runs all five LT3BOT tools through the same builders the slash commands use, without Discord.
- *   npm run check-tools
- *   npm run check-tools -- --only=grid,gif
+ * Runs LT3BOT tools through the same builders the slash commands use, without Discord.
+ *   npm run check-tools              # snappy suite (~30–60s on VM)
+ *   npm run check-tools -- --full    # also big 100-LT3 wallet
+ *   npm run check-tools -- --only=gif,rarity
  */
 import "dotenv/config";
 import { MAX_DISCORD_FILE_BYTES } from "../src/config.js";
@@ -10,14 +11,24 @@ import { buildGifForWalletInputWithTimeout } from "../src/gif-service.js";
 import { buildTraitGridFromTraitText, buildTraitSingleFromTraitText } from "../src/chat/traitGrid.js";
 import { buildRarityVideoWithTimeout } from "../src/render/rarity-video.js";
 
-const BIG_WALLET = "0x62541dfaf846c8c0171a1755b2c057673d88dac7";
 const ENS_WALLET = "animalvault.eth";
+const BIG_WALLET = "0x62541dfaf846c8c0171a1755b2c057673d88dac7";
 
 const checks = [
   { name: "grid", label: `/grid ${ENS_WALLET}`, run: () => buildGridForWalletInputWithTimeout(ENS_WALLET) },
-  { name: "grid", label: "/grid 100-LT3 wallet", run: () => buildGridForWalletInputWithTimeout(BIG_WALLET) },
+  {
+    name: "grid-big",
+    fullOnly: true,
+    label: "/grid 100-LT3 wallet",
+    run: () => buildGridForWalletInputWithTimeout(BIG_WALLET),
+  },
   { name: "gif", label: `/gif ${ENS_WALLET}`, run: () => buildGifForWalletInputWithTimeout(ENS_WALLET) },
-  { name: "gif", label: "/gif 100-LT3 wallet", run: () => buildGifForWalletInputWithTimeout(BIG_WALLET) },
+  {
+    name: "gif-big",
+    fullOnly: true,
+    label: "/gif 100-LT3 wallet",
+    run: () => buildGifForWalletInputWithTimeout(BIG_WALLET),
+  },
   {
     name: "random",
     label: "/random trait:ski",
@@ -45,11 +56,19 @@ const checks = [
 ];
 
 const onlyArg = process.argv.find((a) => a.startsWith("--only="));
-const only = onlyArg ? new Set(onlyArg.slice("--only=".length).split(",")) : null;
+const only = onlyArg ? new Set(onlyArg.slice("--only=".length).split(",").filter(Boolean)) : null;
+const full = process.argv.includes("--full");
+
+function shouldRun(check) {
+  if (only) return only.has(check.name);
+  if (check.fullOnly && !full) return false;
+  return true;
+}
 
 let failed = 0;
 for (const check of checks) {
-  if (only && !only.has(check.name)) continue;
+  if (!shouldRun(check)) continue;
+
   const started = Date.now();
   try {
     const result = await check.run();
@@ -58,7 +77,9 @@ for (const check of checks) {
     const sizeMb = (bytes / 1048576).toFixed(2);
     if (!bytes) throw new Error("empty output");
     if (bytes > MAX_DISCORD_FILE_BYTES) throw new Error(`${sizeMb} MB is over Discord's limit`);
-    const extra = [result.count != null ? `${result.count} LT3s` : "", result.note || ""].filter(Boolean).join(", ");
+    const extra = [result.count != null ? `${result.count} LT3s` : "", result.note || ""]
+      .filter(Boolean)
+      .join(", ");
     console.log(`PASS  ${check.label} — ${seconds}s, ${sizeMb} MB${extra ? `, ${extra}` : ""}`);
   } catch (err) {
     failed += 1;
