@@ -48,16 +48,35 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
           : isGif
             ? gifDecodeLongEdgeForCount(nfts.length)
             : 1200,
-    maxUrlAttempts: isTraitSingle ? 10 : isTraitGrid ? 3 : isGrid ? 4 : isGif ? 4 : 10,
+    // Grid/GIF: try CDN first, then IPFS. Trait singles want the full-res path.
+    maxUrlAttempts: isTraitSingle ? 10 : isTraitGrid ? 6 : isGrid || isGif ? 8 : 10,
     preferCdn: isGrid || isGif || isTraitGrid,
     preferHighRes: isTraitSingle,
-    skipMetadataRefresh: isGif || isTraitGrid,
     fastImageFetch: isTraitGrid,
     jpegQuality: isTraitSingle ? TRAIT_SINGLE_JPEG_QUALITY : 88,
     highQuality: isTraitSingle,
     minSourceEdge: isTraitSingle ? 900 : 0,
     preferAlchemyFirst: isTraitSingle,
   });
+
+  if (!images.length) {
+    throw new Error(`Could not load any LT3 images for ${display}.`);
+  }
+  if (isTraitGrid && images.length < nfts.length) {
+    throw new Error(
+      `Could only load ${images.length} of ${nfts.length} images for that trait grid — try again.`
+    );
+  }
+  if (isTraitSingle && images.length < 1) {
+    throw new Error(`Could not load the image for ${display}.`);
+  }
+
+  if (images.length < nfts.length) {
+    console.warn(
+      `[collection] ${display}: using ${images.length}/${nfts.length} LT3s (skipped broken images)`
+    );
+  }
+
   return { address, display, count: images.length, images };
 }
 

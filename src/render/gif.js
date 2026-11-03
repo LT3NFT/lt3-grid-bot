@@ -49,7 +49,9 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize, frameSize, tim
       "pipe:1",
     ];
 
-    const proc = spawn("ffmpeg", args, { stdio: ["pipe", "pipe", "pipe"] });
+    const proc = spawn(process.env.FFMPEG_PATH || "ffmpeg", args, {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
     let stderr = "";
     const stdoutChunks = [];
     const timeout = setTimeout(() => {
