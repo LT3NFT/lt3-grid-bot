@@ -17,6 +17,7 @@ import { randomCommandData, handleRandomCommand } from "./commands/random.js";
 import { randomgridCommandData, handleRandomgridCommand } from "./commands/randomgrid.js";
 import { rarityCommandData, handleRarityCommand } from "./commands/rarity.js";
 import { wireChat } from "./chat/handler.js";
+import { startToolsReminderSchedule } from "./util/toolsReminderSchedule.js";
 
 export function createBotClient() {
   return new Client({
@@ -69,6 +70,9 @@ export function wireBot(client) {
       .catch((err) => {
         console.error("Failed to sync slash commands on startup", err);
       });
+    void startToolsReminderSchedule(readyClient).catch((err) => {
+      console.error("[tools-reminder] could not start", err);
+    });
   });
 
   client.on("shardDisconnect", (_event, shardId) => {

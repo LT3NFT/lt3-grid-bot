@@ -15,7 +15,8 @@
     "test:layout": "node scripts/test-layout.js",
     "test:chat": "node scripts/test-chat.js",
     "post-tools-reminder": "node scripts/post-tools-reminder.js",
-    "check-rarity": "node scripts/check-rarity.js"
+    "check-rarity": "node scripts/check-rarity.js",
+    "check-tools": "node scripts/check-tools.js"
   },
   "dependencies": {
     "discord.js": "^14.22.1",
