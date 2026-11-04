@@ -7,8 +7,16 @@ const CHANNEL_ID = String(process.env.DISCORD_HUDDLE_CHANNEL_ID || "").trim();
 const CHANNEL_NAME = String(process.env.DISCORD_HUDDLE_CHANNEL_NAME || "the-huddle")
   .trim()
   .toLowerCase();
-/** 0 / unset = off. */
-const INTERVAL_HOURS = Number(process.env.TOOLS_REMINDER_INTERVAL_HOURS) || 0;
+/**
+ * Hours between posts. Default 36. Set TOOLS_REMINDER_INTERVAL_HOURS=0 to disable.
+ * Fractional values work (e.g. 0.1 for testing).
+ */
+const INTERVAL_HOURS = (() => {
+  const raw = process.env.TOOLS_REMINDER_INTERVAL_HOURS;
+  if (raw === undefined || raw === "") return 36;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 36;
+})();
 const STATE_FILE = path.resolve("data", "tools-reminder.json");
 
 export async function resolveHuddleChannel(client) {
@@ -67,12 +75,15 @@ export async function startToolsReminderSchedule(client) {
   };
 
   const lastPostedAt = await readLastPostedAt();
-  // First run waits a full interval, so turning this on never surprises the channel.
-  if (!lastPostedAt) await writeLastPostedAt(Date.now());
-  const since = lastPostedAt ? Date.now() - lastPostedAt : 0;
-  const firstDelay = Math.max(60_000, intervalMs - since);
-  console.log(
-    `[tools-reminder] every ${INTERVAL_HOURS}h — next post in ${(firstDelay / 3_600_000).toFixed(1)}h`
-  );
+  // First-ever post: ~2 minutes after boot so you can confirm it in #the-huddle.
+  // After that: every INTERVAL_HOURS from the last successful send (survives restarts).
+  const firstDelay = !lastPostedAt
+    ? 120_000
+    : Math.max(60_000, intervalMs - (Date.now() - lastPostedAt));
+  const delayLabel =
+    firstDelay >= 3_600_000
+      ? `${(firstDelay / 3_600_000).toFixed(1)}h`
+      : `${Math.round(firstDelay / 60_000)}m`;
+  console.log(`[tools-reminder] every ${INTERVAL_HOURS}h — next post in ${delayLabel}`);
   setTimeout(tick, firstDelay).unref?.();
 }

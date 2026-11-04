@@ -12,7 +12,7 @@ export const MAX_DISCORD_LONG_EDGE = 4096;
 export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
-export const BOT_VERSION = "2026-11-03-v23";
+export const BOT_VERSION = "2026-11-04-v24";
 export const MAX_TOTAL_HEAVY_JOBS = Number(process.env.MAX_TOTAL_HEAVY_JOBS) || 2;
 export const MAX_CONCURRENT_GRID_JOBS = Number(process.env.MAX_CONCURRENT_GRID_JOBS) || 2;
 export const MAX_CONCURRENT_GIF_JOBS = Number(process.env.MAX_CONCURRENT_GIF_JOBS) || 1;
@@ -26,20 +26,20 @@ export function gifTimeoutForCount(count) {
   return Math.min(900_000, 180_000 + count * 6000);
 }
 export function gifFrameSizeForCount(count) {
-  // Keep frames chat-sized — Discord preview + encode speed matter more than 512px.
-  if (count <= 12) return 440;
-  if (count <= 24) return 400;
-  if (count <= 40) return 360;
-  if (count <= 70) return 320;
-  return 280;
+  // Chat-sized, but high enough that shadows/gradients survive GIF quantization.
+  if (count <= 12) return 480;
+  if (count <= 24) return 440;
+  if (count <= 40) return 400;
+  if (count <= 70) return 360;
+  return 320;
 }
 /** Max ffmpeg encode attempts — scale down in ffmpeg, do not re-render frames. */
 export function gifEncodeScaleTargets(renderSize) {
   const targets = [renderSize];
-  for (const size of [360, 320, 280, 240]) {
+  for (const size of [400, 360, 320, 280, 240]) {
     if (size < renderSize) targets.push(size);
   }
-  return targets.slice(0, 3);
+  return targets.slice(0, 4);
 }
 export function gifFpsForCount(count) {
   if (count > 80) return 4;
@@ -57,7 +57,8 @@ export function imageFetchConcurrencyForGif(count) {
   return 10;
 }
 export function ffmpegTimeoutForFrameCount(frameCount) {
-  return Math.min(120_000, 30_000 + frameCount * 900);
+  // Per-frame palettes are a bit slower than one shared palette.
+  return Math.min(180_000, 40_000 + frameCount * 1200);
 }
 export const GIF_FPS = 5;
 export const GIF_FRAME_SIZE = 512;

@@ -12,16 +12,19 @@ import {
 
 const BACKGROUND = { r: 243, g: 239, b: 228, alpha: 255 };
 
-/** JPEG frames are much faster to encode than PNG and plenty for Discord GIFs. */
-async function renderFrameJpeg(imageBuffer, size) {
+/**
+ * Lossless PNG frames (fast compression). JPEG/chroma-subsample was banding shadows
+ * and shifting LT3 colors before the GIF palette step.
+ */
+async function renderFramePng(imageBuffer, size) {
   return sharp(imageBuffer, { failOn: "none" })
     .resize(size, size, {
       fit: "cover",
       position: "centre",
       background: BACKGROUND,
-      kernel: sharp.kernel.cubic,
+      kernel: sharp.kernel.lanczos3,
     })
-    .jpeg({ quality: 82, chromaSubsampling: "4:2:0", mozjpeg: false })
+    .png({ compressionLevel: 1, adaptiveFiltering: false })
     .toBuffer();
 }
 
@@ -29,9 +32,10 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize, frameSize, tim
   return new Promise((resolve, reject) => {
     const scale =
       outputSize > 0 && outputSize !== frameSize
-        ? `scale=${outputSize}:${outputSize}:flags=fast_bilinear,`
+        ? `scale=${outputSize}:${outputSize}:flags=lanczos,`
         : "";
-    // stats_mode=full is faster than diff for NFT flipbooks (frames don't share motion).
+    // Per-frame palette (stats_mode=single + new=1): each LT3 keeps its own colors.
+    // A shared palette across different NFTs was muddy on shadows and accents.
     const args = [
       "-y",
       "-hide_banner",
@@ -40,13 +44,13 @@ async function encodeGifWithFfmpeg(frameBuffers, fps, outputSize, frameSize, tim
       "-f",
       "image2pipe",
       "-vcodec",
-      "mjpeg",
+      "png",
       "-framerate",
       String(fps),
       "-i",
       "pipe:0",
       "-vf",
-      `${scale}fps=${fps},split[s0][s1];[s0]palettegen=stats_mode=full:max_colors=192[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4`,
+      `${scale}fps=${fps},split[s0][s1];[s0]palettegen=stats_mode=single:max_colors=256[p];[s1][p]paletteuse=new=1:dither=sierra2_4a`,
       "-loop",
       "0",
       "-f",
@@ -110,10 +114,10 @@ export async function renderCollectionGif(images, onProgress) {
   const renderConcurrency = gifRenderConcurrencyForCount(images.length);
   const encodeTimeoutMs = ffmpegTimeoutForFrameCount(images.length);
 
-  console.log(`[gif] ${images.length} frames @ ${renderSize}px, ${fps}fps`);
+  console.log(`[gif] ${images.length} frames @ ${renderSize}px, ${fps}fps (per-frame palette)`);
   onProgress?.("frames");
   const frameBuffers = await mapWithConcurrency(images, renderConcurrency, async (image) =>
-    renderFrameJpeg(image.buffer, renderSize)
+    renderFramePng(image.buffer, renderSize)
   );
 
   const encodeTargets = gifEncodeScaleTargets(renderSize);

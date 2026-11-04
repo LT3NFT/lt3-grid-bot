@@ -47,14 +47,16 @@ python3 - <<'PY'
 from pathlib import Path
 p = Path(".env")
 text = p.read_text() if p.exists() else ""
-lines = [ln for ln in text.splitlines() if not ln.startswith(("RARITY_FPS=", "RARITY_WIDTH=", "RARITY_HEIGHT=", "RARITY_TIMEOUT_MS="))]
+drop = ("RARITY_FPS=", "RARITY_WIDTH=", "RARITY_HEIGHT=", "RARITY_TIMEOUT_MS=", "TOOLS_REMINDER_INTERVAL_HOURS=")
+lines = [ln for ln in text.splitlines() if not ln.startswith(drop)]
 lines += [
     "RARITY_WIDTH=1920",
     "RARITY_HEIGHT=1080",
     "RARITY_TIMEOUT_MS=180000",
+    "TOOLS_REMINDER_INTERVAL_HOURS=36",
 ]
 p.write_text("\n".join(lines).rstrip() + "\n")
-print("    set RARITY_WIDTH=1920 RARITY_HEIGHT=1080 RARITY_TIMEOUT_MS=180000")
+print("    set RARITY_* + TOOLS_REMINDER_INTERVAL_HOURS=36")
 PY
 
 echo "==> npm ci"
