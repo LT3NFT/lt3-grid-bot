@@ -47,16 +47,25 @@ python3 - <<'PY'
 from pathlib import Path
 p = Path(".env")
 text = p.read_text() if p.exists() else ""
-drop = ("RARITY_FPS=", "RARITY_WIDTH=", "RARITY_HEIGHT=", "RARITY_TIMEOUT_MS=", "TOOLS_REMINDER_INTERVAL_HOURS=")
+drop = (
+    "RARITY_FPS=",
+    "RARITY_WIDTH=",
+    "RARITY_HEIGHT=",
+    "RARITY_TIMEOUT_MS=",
+    "TOOLS_REMINDER_INTERVAL_HOURS=",
+    "DISCORD_TOOLS_REMINDER_CHANNEL_NAME=",
+    "DISCORD_HUDDLE_CHANNEL_NAME=",
+)
 lines = [ln for ln in text.splitlines() if not ln.startswith(drop)]
 lines += [
     "RARITY_WIDTH=1920",
     "RARITY_HEIGHT=1080",
     "RARITY_TIMEOUT_MS=180000",
     "TOOLS_REMINDER_INTERVAL_HOURS=36",
+    "DISCORD_TOOLS_REMINDER_CHANNEL_NAME=main-chat",
 ]
 p.write_text("\n".join(lines).rstrip() + "\n")
-print("    set RARITY_* + TOOLS_REMINDER_INTERVAL_HOURS=36")
+print("    set RARITY_* + tools reminder → #main-chat every 36h")
 PY
 
 echo "==> npm ci"

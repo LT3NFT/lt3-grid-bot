@@ -3,8 +3,8 @@ import path from "path";
 import { DISCORD_GUILD_ID } from "../config.js";
 import { buildToolsReminderEmbed, fetchGuildCommandIdMap } from "./toolsReminderMessage.js";
 
-const CHANNEL_ID = String(process.env.DISCORD_HUDDLE_CHANNEL_ID || "").trim();
-const CHANNEL_NAME = String(process.env.DISCORD_HUDDLE_CHANNEL_NAME || "the-huddle")
+const CHANNEL_ID = String(process.env.DISCORD_TOOLS_REMINDER_CHANNEL_ID || "").trim();
+const CHANNEL_NAME = String(process.env.DISCORD_TOOLS_REMINDER_CHANNEL_NAME || "main-chat")
   .trim()
   .toLowerCase();
 /**
@@ -19,11 +19,13 @@ const INTERVAL_HOURS = (() => {
 })();
 const STATE_FILE = path.resolve("data", "tools-reminder.json");
 
-export async function resolveHuddleChannel(client) {
+export async function resolveToolsReminderChannel(client) {
   if (CHANNEL_ID) {
     const ch = await client.channels.fetch(CHANNEL_ID).catch(() => null);
     if (ch?.isTextBased()) return ch;
-    throw new Error(`DISCORD_HUDDLE_CHANNEL_ID=${CHANNEL_ID} is not a text channel the bot can use.`);
+    throw new Error(
+      `DISCORD_TOOLS_REMINDER_CHANNEL_ID=${CHANNEL_ID} is not a text channel the bot can use.`
+    );
   }
 
   const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
@@ -31,14 +33,17 @@ export async function resolveHuddleChannel(client) {
   const match = channels.find((ch) => ch?.isTextBased() && ch.name?.toLowerCase() === CHANNEL_NAME);
   if (!match) {
     throw new Error(
-      `No text channel named "${CHANNEL_NAME}" in guild ${DISCORD_GUILD_ID}. Set DISCORD_HUDDLE_CHANNEL_ID in .env.`
+      `No text channel named "${CHANNEL_NAME}" in guild ${DISCORD_GUILD_ID}. Set DISCORD_TOOLS_REMINDER_CHANNEL_ID in .env.`
     );
   }
   return match;
 }
 
+/** @deprecated use resolveToolsReminderChannel */
+export const resolveHuddleChannel = resolveToolsReminderChannel;
+
 export async function postToolsReminder(client) {
-  const channel = await resolveHuddleChannel(client);
+  const channel = await resolveToolsReminderChannel(client);
   const idMap = await fetchGuildCommandIdMap();
   const sent = await channel.send({ embeds: [buildToolsReminderEmbed({ idMap })] });
   return { channel, sent };
@@ -75,7 +80,7 @@ export async function startToolsReminderSchedule(client) {
   };
 
   const lastPostedAt = await readLastPostedAt();
-  // First-ever post: ~2 minutes after boot so you can confirm it in #the-huddle.
+  // First-ever post: ~2 minutes after boot so you can confirm it in the channel.
   // After that: every INTERVAL_HOURS from the last successful send (survives restarts).
   const firstDelay = !lastPostedAt
     ? 120_000
@@ -84,6 +89,6 @@ export async function startToolsReminderSchedule(client) {
     firstDelay >= 3_600_000
       ? `${(firstDelay / 3_600_000).toFixed(1)}h`
       : `${Math.round(firstDelay / 60_000)}m`;
-  console.log(`[tools-reminder] every ${INTERVAL_HOURS}h — next post in ${delayLabel}`);
+  console.log(`[tools-reminder] every ${INTERVAL_HOURS}h → #${CHANNEL_NAME || CHANNEL_ID} — next post in ${delayLabel}`);
   setTimeout(tick, firstDelay).unref?.();
 }
