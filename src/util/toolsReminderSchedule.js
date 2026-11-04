@@ -19,6 +19,32 @@ const INTERVAL_HOURS = (() => {
 })();
 const STATE_FILE = path.resolve("data", "tools-reminder.json");
 
+/** Strip emoji/punctuation so "📮 | main-chat" matches "main-chat". */
+function normalizeChannelName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\w-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function channelMatches(channelName, target) {
+  const raw = String(channelName || "").toLowerCase();
+  const want = String(target || "").toLowerCase();
+  if (!want) return false;
+  if (raw === want) return true;
+  if (raw.endsWith(want) || raw.includes(want)) return true;
+
+  const norm = normalizeChannelName(channelName);
+  const wantNorm = normalizeChannelName(target);
+  if (norm === wantNorm) return true;
+  if (norm.endsWith(wantNorm) || norm.includes(wantNorm)) return true;
+  // "mailbox-main-chat" / "main-chat" after emoji stripped to trailing slug
+  const parts = norm.split("-").filter(Boolean);
+  return parts[parts.length - 1] === wantNorm || parts.slice(-2).join("-") === wantNorm;
+}
+
 export async function resolveToolsReminderChannel(client) {
   if (CHANNEL_ID) {
     const ch = await client.channels.fetch(CHANNEL_ID).catch(() => null);
@@ -30,10 +56,18 @@ export async function resolveToolsReminderChannel(client) {
 
   const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
   const channels = await guild.channels.fetch();
-  const match = channels.find((ch) => ch?.isTextBased() && ch.name?.toLowerCase() === CHANNEL_NAME);
+  const textChannels = [...channels.values()].filter((ch) => ch?.isTextBased());
+  const match = textChannels.find((ch) => channelMatches(ch.name, CHANNEL_NAME));
   if (!match) {
+    const sample = textChannels
+      .map((ch) => ch.name)
+      .filter((n) => /main|chat|huddle/i.test(n))
+      .slice(0, 8)
+      .join(", ");
     throw new Error(
-      `No text channel named "${CHANNEL_NAME}" in guild ${DISCORD_GUILD_ID}. Set DISCORD_TOOLS_REMINDER_CHANNEL_ID in .env.`
+      `No text channel matching "${CHANNEL_NAME}" in guild ${DISCORD_GUILD_ID}.` +
+        (sample ? ` Nearby names: ${sample}.` : "") +
+        ` If #main-chat is private, give LT3BOT View Channel + Send Messages, or set DISCORD_TOOLS_REMINDER_CHANNEL_ID.`
     );
   }
   return match;
@@ -89,6 +123,8 @@ export async function startToolsReminderSchedule(client) {
     firstDelay >= 3_600_000
       ? `${(firstDelay / 3_600_000).toFixed(1)}h`
       : `${Math.round(firstDelay / 60_000)}m`;
-  console.log(`[tools-reminder] every ${INTERVAL_HOURS}h → #${CHANNEL_NAME || CHANNEL_ID} — next post in ${delayLabel}`);
+  console.log(
+    `[tools-reminder] every ${INTERVAL_HOURS}h → match "${CHANNEL_NAME || CHANNEL_ID}" — next post in ${delayLabel}`
+  );
   setTimeout(tick, firstDelay).unref?.();
 }
