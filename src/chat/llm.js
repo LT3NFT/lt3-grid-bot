@@ -30,6 +30,7 @@ import {
   looksLikeUnpromptedPetTalk,
   looksLikeInventedPersonReply,
   looksLikeInventedMarketClaim,
+  looksLikeUnpromptedStatusFlattery,
   looksLikeReusedLine,
   fixDoubleTossBack,
   userGreetedFirst,
@@ -104,6 +105,9 @@ function reviewChatDraft(text, userText, { cap, greetedFirst, welcomeBack, recen
   }
   if (looksLikeInventedMarketClaim(text, userText)) {
     return "You invented floor or market news. You do not have live stats here. Reply without any floor, listings, volume, owners, or ETH price claims.";
+  }
+  if (looksLikeUnpromptedStatusFlattery(text, userText)) {
+    return "Don't announce their title or that they run / rule the place. Talk like a normal friend. Especially on a plain hi, just say hi.";
   }
   if (looksLikeCluelessAgreement(text, userText)) {
     return "You can't actually see that. Say so honestly instead of agreeing.";

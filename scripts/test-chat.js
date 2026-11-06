@@ -41,6 +41,7 @@ import {
   userMentionedPets,
   looksLikeReusedLine,
   looksLikeInventedMarketClaim,
+  looksLikeUnpromptedStatusFlattery,
   buildChatSystemPrompt,
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
@@ -360,6 +361,18 @@ assert(
   !looksLikeInventedMarketClaim("Floor sits around 0.12 ETH.", "what's the floor")
 );
 assert("plain hello not market claim", !looksLikeInventedMarketClaim("Hey Jack.", "hi"));
+assert(
+  "unprompted run the place flattery",
+  looksLikeUnpromptedStatusFlattery("Hey Jack. Still running the place I see.", "hi")
+);
+assert(
+  "unprompted ruling flattery",
+  looksLikeUnpromptedStatusFlattery("Hey. Ruling as usual.", "hi")
+);
+assert(
+  "plain hey jack not flattery",
+  !looksLikeUnpromptedStatusFlattery("Hey Jack.", "hi")
+);
 assert("copied example caught", looksLikeReusedLine("Running on fumes today. Synthetic blend works."));
 assert(
   "repeat of own recent reply caught",

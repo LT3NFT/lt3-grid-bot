@@ -207,6 +207,26 @@ export function userAskedAboutMarket(text) {
 }
 
 /**
+ * Unprompted "you run / rule this place" status talk aimed at founders/team.
+ * Fine to know who they are; not fine to announce it on a plain hi.
+ */
+export function looksLikeUnpromptedStatusFlattery(reply, userText = "") {
+  if (/\b(who am i|am i (?:a |the )?founder|my role|the team|founders?)\b/i.test(userText)) {
+    return false;
+  }
+  const r = reply.trim();
+  if (/\b(?:run(?:ning|s)?|rule(?:s|ing)?|own(?:s|ing)?)\s+(?:the\s+)?(?:place|show|ship|project|lt3)\b/i.test(r)) {
+    return true;
+  }
+  if (/\b(?:still\s+)?(?:ruling|running things|in charge)\b/i.test(r)) return true;
+  if (/\b(?:the\s+)?(?:boss|founder|creator|king|ceo)\b/i.test(r)) return true;
+  if (/\b(?:on\s+the\s+team|part\s+of\s+the\s+team|you(?:'re| are)\s+(?:in\s+)?charge)\b/i.test(r)) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Fake floor / market claims when the user didn't ask and no live stats were pulled.
  * Live stats go through the scripted OpenSea path — LLM chat must not invent them.
  */
@@ -284,7 +304,7 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   } else if (casualCheckIn) {
     situation = `They asked what you're up to. Say one specific thing you're doing, plainly, with a dry edge if it comes naturally. A single toss-back like Wbu is optional. Do not invent floor moves or market numbers.`;
   } else if (isGreeting) {
-    situation = `They just said hi. Say hi back like a friend in Discord would: a couple of words, maybe their first name. Only add more if it's genuinely funny and specific to them. Shorter is better here. Do not invent floor moves, listings, volume, or any market news.`;
+    situation = `They just said hi. Say hi back like a friend in Discord would: a couple of words, maybe their first name. Only add more if it's genuinely funny and specific to them. Shorter is better here. Do not invent floor moves, listings, volume, or any market news. Do not mention titles, founders, running the place, ruling, or team status.`;
   } else if (conversational) {
     situation = `Answer what they said or asked, with a dry edge if one fits. One or two short sentences. Do not invent floor or market facts.`;
   } else if (len <= 40) {
@@ -321,24 +341,24 @@ Special: Father (fatherofthr) — OG LT3 member. You can call him Father. Warm r
   if (userContext?.isJack) {
     prompt += `
 
-Special: Jack (jacklt3) — LT3 founder. Call him Jack. Warm respect, still short and chill, not formal.`;
+Special: Jack (jacklt3) — LT3 founder / on the team. Call him Jack. Know this for context if something comes up. Do NOT announce his role, status, or that he runs / rules / owns the place. Talk to him like a normal friend, especially on a plain hi.`;
   }
 
   if (userContext?.isTyler) {
     prompt += `
 
-Special: Tyler (tyler_lt3) — LT3 founder. Warm respect, still short and chill, not formal.`;
+Special: Tyler (tyler_lt3) — LT3 founder / on the team. Know this for context if something comes up. Do NOT announce his role or that he runs the place. Talk normally, especially on a plain hi.`;
   }
 
   if (userContext?.isShg) {
     if (userContext?.shgUseNickname) {
       prompt += `
 
-Special: superhighgasfees — LT3 founder. This message only, you can call him ${userContext.shgNickname} if it fits naturally. Not in every sentence. Warm respect, still short and chill.`;
+Special: superhighgasfees — LT3 founder / on the team. This message only, you can call him ${userContext.shgNickname} if it fits naturally. Not in every sentence. Know this for context if something comes up. Do NOT announce his role or that he runs the place. Talk normally, especially on a plain hi.`;
     } else {
       prompt += `
 
-Special: superhighgasfees — LT3 founder. Warm respect, still short and chill. Skip SHG/Soup nicknames this time.`;
+Special: superhighgasfees — LT3 founder / on the team. Know this for context if something comes up. Do NOT announce his role or that he runs the place. Talk normally, especially on a plain hi. Skip SHG/Soup nicknames this time.`;
     }
   }
 
@@ -407,16 +427,16 @@ function appendUserSpecials(prompt, userContext, userText = "") {
     out += `\n\nSpecial: Father (fatherofthr) — OG LT3 member. Warm respect, still short.`;
   }
   if (userContext?.isJack) {
-    out += `\n\nSpecial: Jack (jacklt3) — LT3 founder. Call him Jack. Warm respect, still short.`;
+    out += `\n\nSpecial: Jack (jacklt3) — LT3 founder / on the team. Call him Jack. Know for context; do not announce his role or that he runs the place. Talk normally.`;
   }
   if (userContext?.isTyler) {
-    out += `\n\nSpecial: Tyler (tyler_lt3) — LT3 founder. Warm respect, still short.`;
+    out += `\n\nSpecial: Tyler (tyler_lt3) — LT3 founder / on the team. Know for context; do not announce his role. Talk normally.`;
   }
   if (userContext?.isShg) {
     if (userContext?.shgUseNickname) {
-      out += `\n\nSpecial: superhighgasfees — founder. This message only you can call him ${userContext.shgNickname} if it fits.`;
+      out += `\n\nSpecial: superhighgasfees — founder / on the team. This message only you can call him ${userContext.shgNickname} if it fits. Do not announce his role. Talk normally.`;
     } else {
-      out += `\n\nSpecial: superhighgasfees — LT3 founder. Warm respect, still short.`;
+      out += `\n\nSpecial: superhighgasfees — LT3 founder / on the team. Know for context; do not announce his role. Talk normally.`;
     }
   }
   if (userContext?.barryLookingUpJoke) {
