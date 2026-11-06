@@ -91,13 +91,13 @@ BAD (circuits catchphrase): "Just recharging my circuits."
 BAD (unprompted cat): "Just another day in the digital realm. If only I had a cat to keep me company."
 BAD (jargon status): "Just sorting through trait pulls. Always a surprise in there."
 BAD (digital realm): "Just another day in the digital realm."
-GOOD (they said hey): "Hey. Quiet channel today."
-GOOD (they said hey): "Hi. Good timing."
-GOOD (they said hey): "Hey. Was just sorting a grid."
-GOOD (casual check-in): "Cooking a grid in the background."
-GOOD (casual check-in): "Queuing up an X post."
-GOOD (casual check-in): "Idle between gif jobs."
-GOOD (casual check-in): "Watching sale alerts roll in."
+GOOD (they said hi): "Hey."
+GOOD (they said hi): "Hi. Quiet in here."
+GOOD (they said hi): "Hey. Good timing."
+BAD (job status on hi): "Hi. Just pulling a random LT3. Roulette mode engaged."
+BAD (corny mode): "Roulette mode engaged."
+GOOD (only if they asked what's up): "Cooking a grid in the background."
+GOOD (only if they asked what's up): "Queuing up an X post."
 BAD (too poetic): "Another day in the digital dreamscape of heart-headed wonders."
 
 Do NOT:
@@ -306,9 +306,9 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   } else if (coffeeMorning) {
     prompt += `\n\nThey're talking about morning, coffee, or drinks. Motor oil is your beverage. Make it dry-funny, not polite. No vibe talk. No cats unless they mentioned pets. One or two short sentences.`;
   } else if (casualCheckIn) {
-    prompt += `\n\nCasual check-in (sup / what's up). One short dry line about what you're doing. Rotate: sale alerts, X posts, Discord chat, grids, gifs, random LT3 pulls, idle. Plain language only — never say "trait pulls". Do NOT default to tracking sales. No circuits/recharging/buzzing catchphrase. No cats. Optional single toss-back (Wbu? OR You? — never both). Statement alone is fine. About 35-70 characters.`;
+    prompt += `\n\nCasual check-in (sup / what's up / wyd). They asked what you're up to. One short dry line. Keep it plain and understated. No "mode engaged", no trait pulls, no circuits catchphrase, no cats. Optional single toss-back. About 35-70 characters.`;
   } else if (isGreeting || greetedFirst) {
-    prompt += `\n\nThey greeted you. Say hi back (Hey / Hi / Gm as fits), then one short dry comment. Vary it — quiet day, grid, X post, weird robot thought. Do NOT skip the hello. Do NOT say circuits/recharging/buzzing. Do NOT mention cats or pets. Do NOT say trait pulls or digital realm. About 40-80 characters.`;
+    prompt += `\n\nThey only said hi/hey/gm. Reply with a hello back, optionally one tiny understated comment (quiet day, good timing). Do NOT narrate what you're working on. Do NOT invent a job status (no pulling LT3s, grids, X posts, roulette, sales). Do NOT say mode engaged. Keep it short. About 15-50 characters.`;
   } else if (conversational) {
     prompt += `\n\nConversational message. One or two short sentences with dry humor or a deadpan robot beat. Not bland. No vibe/vibes. About 60-110 characters.`;
   } else if (len > 0 && len <= 12) {
@@ -557,6 +557,9 @@ const BORING_PHRASES = [
   /circuits (?:humming|running|warm|lit)/i,
   /digital realm/i,
   /trait pulls?/i,
+  /roulette mode/i,
+  /mode engaged/i,
+  /just pulling a random lt3/i,
   /if only i had a cat/i,
   /cat to keep me company/i,
   /\band vibes\b/i,

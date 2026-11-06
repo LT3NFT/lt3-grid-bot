@@ -138,7 +138,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       : looksLikeBoringReply(text)
         ? "Too bland. Add dry humor. Deadpan robot joke. Never say vibe/vibes. No LT3 universe, great pick, or polite filler. If they mentioned cats/pets/coding, lead with a no-body joke."
       : isGreeting || greetedFirst
-        ? "They said hi. Say hi back, then one short dry comment. Vary it. No circuits catchphrase, no cats, no trait pulls, no digital realm, no vibe/vibes."
+        ? "They only said hi. Say hi back. Tiny comment max. Do NOT invent a job status (no pulling LT3s, roulette, grids, X posts). No mode engaged, circuits, cats, or vibe talk."
         : looksLikePoetrySpam(text)
           ? "Too poetic. Dial it back — one dry thought with robot flavor. Short."
           : looksLikeRepetitiveComeback(text)

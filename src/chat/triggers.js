@@ -18,14 +18,14 @@ const GREETING_RE =
 
 /** Fallback if the LLM fails on a simple greeting — hi + a small varied comment. */
 const GREETING_FALLBACK_POOL = [
-  "Hey. Quiet channel today.",
-  "Hi. Still here.",
-  "Gm. Still booted.",
-  "Hey. Grid queue is empty for once.",
+  "Hey.",
+  "Hi.",
+  "Gm.",
+  "Hey. Quiet in here.",
   "Hi. Good timing.",
-  "Morning. Soft day so far.",
-  "Hey. Back online and slightly existential.",
-  "Hi. Was just staring at the floor price.",
+  "Morning.",
+  "Hey. Still here.",
+  "Hi. Soft day so far.",
 ];
 
 export const SCRIPTED = {
