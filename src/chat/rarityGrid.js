@@ -8,18 +8,33 @@ const MIN_COUNT = 4;
 const MAX_COUNT = 49;
 
 /**
- * Natural-language "top N rarest" / "rarest grid" requests.
+ * Natural-language "top N rarest/rarity" grid requests.
+ * Matches: top 25 rarest, top 25 rarity, rarest 9, grid of rarest lt3s, etc.
  * @param {string} text
  */
 export function isRarityGridRequest(text) {
   const t = text.trim();
   if (!t) return false;
+  // Single-token /rarity breakdown — not a collection grid.
   if (/\b(rarity\s+breakdown|\/rarity)\b/i.test(t)) return false;
-  if (/\b(top|most)\s+\d{1,2}\s+rarest\b/i.test(t)) return true;
-  if (/\brarest\s+\d{1,2}\b/i.test(t)) return true;
-  if (/\b\d{1,2}\s+rarest\b/i.test(t)) return true;
-  if (/\b(top\s+rarest|rarest\s+lt3s?|most\s+rare(?:st)?\s+lt3s?)\b/i.test(t)) return true;
-  if (/\bgrid\b/i.test(t) && /\brarest\b/i.test(t)) return true;
+  if (/\brarity\b/i.test(t) && /\b#\d{1,5}\b/.test(t) && !/\b(top|grid|rarest)\b/i.test(t)) {
+    return false;
+  }
+
+  const rarityWord = /\b(rarest|rarity|rare)\b/i.test(t);
+  const rankingAsk =
+    /\b(top|most)\s+\d{1,2}\b/i.test(t) ||
+    /\b\d{1,2}\s+(rarest|rarity|rare)\b/i.test(t) ||
+    /\b(rarest|rarity)\s+\d{1,2}\b/i.test(t) ||
+    /\b(top\s+rarest|most\s+rare(?:st)?)\b/i.test(t);
+  const gridAsk = /\b(grid|gridded|collage|mosaic)\b/i.test(t);
+  const collectionAsk = /\b(lt3s?|nfts?|ones|pieces)\b/i.test(t);
+
+  if (rankingAsk && rarityWord) return true;
+  if (gridAsk && rarityWord) return true;
+  if (rarityWord && collectionAsk && /\b(top|most|show|make|pull|send|give|grid)\b/i.test(t)) {
+    return true;
+  }
   return false;
 }
 
@@ -30,10 +45,11 @@ export function isRarityGridRequest(text) {
 export function parseRarityGridCount(text) {
   const t = text.trim();
   const patterns = [
-    /\b(?:top|most)\s+(\d{1,2})\s+rarest\b/i,
-    /\brarest\s+(\d{1,2})\b/i,
-    /\b(\d{1,2})\s+rarest\b/i,
+    /\b(?:top|most)\s+(\d{1,2})\s+(?:rarest|rarity|rare)\b/i,
+    /\b(?:rarest|rarity|rare)\s+(\d{1,2})\b/i,
+    /\b(\d{1,2})\s+(?:rarest|rarity|rare)\b/i,
     /\btop\s+(\d{1,2})\b/i,
+    /\b(\d{1,2})\s*(?:x|×)\s*\1\b/i,
   ];
   for (const re of patterns) {
     const m = t.match(re);

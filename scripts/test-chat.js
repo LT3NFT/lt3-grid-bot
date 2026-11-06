@@ -354,6 +354,12 @@ assert(
 assert("rarity grid count 25", parseRarityGridCount("make me a grid of the top 25 rarest lt3s") === 25);
 assert("rarity grid rarest 9", isRarityGridRequest("grid of the rarest 9") && parseRarityGridCount("grid of the rarest 9") === 9);
 assert("rarity grid default count", parseRarityGridCount("show me a rarest lt3s grid") === 25);
+assert("rarity grid top 25 rarity phrasing", isRarityGridRequest("top 25 rarity lt3s"));
+assert(
+  "rarity grid pull up rarity phrasing",
+  isRarityGridRequest("pull up the top 25 rarity lt3s in a grid")
+);
+assert("rarity grid by rarity", isRarityGridRequest("show me top 25 by rarity"));
 assert("rarity grid not floor ask", !isRarityGridRequest("what's the floor"));
 assert("rarity grid not single rarity breakdown", !isRarityGridRequest("/rarity 4449"));
 

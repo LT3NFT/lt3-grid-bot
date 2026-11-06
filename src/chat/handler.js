@@ -113,6 +113,7 @@ async function handleChatMessage(message, client) {
     if (imageUrls.length === 0) {
       try {
         if (isRarityGridRequest(cleanText)) {
+          console.log("[Chat] rarity grid request:", cleanText.slice(0, 120));
           const rarityReply = await buildRarityGridReplyQueued(cleanText);
           if (rarityReply) {
             await message.reply({ content: rarityReply.caption, files: [rarityReply.attachment] });
