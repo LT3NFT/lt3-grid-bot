@@ -21,6 +21,7 @@ const GREETING_FALLBACK_POOL = [
   "Gm. Still booted. Still here.",
   "Just recharging my circuits.",
   "Cooking a grid in the background.",
+  "Queuing up an X post.",
   "Idle between gif jobs.",
   "Sorting trait pulls. Organized chaos.",
   "Watching sale alerts roll in.",

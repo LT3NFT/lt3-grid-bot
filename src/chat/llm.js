@@ -134,7 +134,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       : looksLikeBoringReply(text)
         ? "Too bland. Add dry humor. Deadpan robot joke. Never say vibe/vibes. No LT3 universe, great pick, or polite filler. If they mentioned cats/pets/coding, lead with a no-body joke."
       : isGreeting
-        ? "Too bland or too sales-default. One short dry line. Mix it up: grids, gifs, trait pulls, idle, or sales — not always sales. Optional single toss-back. Never say vibe/vibes or LT3 universe."
+        ? "Too bland or too sales-default. One short dry line. Mix it up: X posts, grids, gifs, Discord chat, trait pulls, idle, or sales — not always sales. Optional single toss-back. Never say vibe/vibes or LT3 universe."
         : looksLikePoetrySpam(text)
           ? "Too poetic. Dial it back — one dry thought with robot flavor. Short."
           : looksLikeRepetitiveComeback(text)
