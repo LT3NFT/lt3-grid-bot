@@ -2,10 +2,12 @@ import { AttachmentBuilder } from "discord.js";
 import { buildGridForTokenIds } from "../grid-service.js";
 import { getTopRarestLt3s } from "../nft/rarityRanks.js";
 import { runGridJob } from "../util/heavy-queue.js";
+import { withTimeout } from "../util/wallet-resolve.js";
 
 const DEFAULT_COUNT = 25;
 const MIN_COUNT = 4;
-const MAX_COUNT = 49;
+const MAX_COUNT = 36;
+const RARITY_GRID_TIMEOUT_MS = 90_000;
 
 /**
  * Natural-language "top N rarest/rarity" grid requests.
@@ -76,15 +78,20 @@ export async function buildRarityGridReply(text) {
   if (!isRarityGridRequest(text)) return null;
 
   const count = parseRarityGridCount(text);
+  console.log(`[Chat] rarity grid: loading top ${count}`);
   const ranked = await getTopRarestLt3s(count);
   if (ranked.length < MIN_COUNT) {
     throw new Error("Could not load enough rarity ranks for a grid.");
   }
 
   const tokenIds = ranked.map((r) => r.tokenId);
-  const result = await buildGridForTokenIds(tokenIds, {
-    label: `top-${ranked.length}-rarest`,
-  });
+  const result = await withTimeout(
+    buildGridForTokenIds(tokenIds, {
+      label: `top-${ranked.length}-rarest`,
+    }),
+    RARITY_GRID_TIMEOUT_MS,
+    "Rarity grid timed out loading images. Try again in a minute."
+  );
   const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
   const caption = pickRarityGridCaption(
     ranked.length,
@@ -92,6 +99,7 @@ export async function buildRarityGridReply(text) {
     ranked[ranked.length - 1].rank
   );
 
+  console.log(`[Chat] rarity grid ready: ${result.filename} (${result.buffer.length} bytes)`);
   return { caption, attachment, count: ranked.length, tokenIds };
 }
 

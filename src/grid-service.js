@@ -1,9 +1,15 @@
-import { gridTimeoutForCount, TRAIT_GRID_EXPORT_LONG_EDGE } from "./config.js";
+import { gridTimeoutForCount, LT3_CONTRACT_LC, OPENSEA_API_KEY, TRAIT_GRID_EXPORT_LONG_EDGE } from "./config.js";
 import {
   fetchAllLt3NftsForOwner,
   loadLt3CollectionFromNfts,
 } from "./nft/collection.js";
-import { pickRandomNftForTrait, pickRandomNftsForTraitGrid, TRAIT_GRID_SIZE } from "./nft/traits.js";
+import { apiHeaders, fetchJson } from "./chat/opensea.js";
+import {
+  normalizeOpenSeaNft,
+  pickRandomNftForTrait,
+  pickRandomNftsForTraitGrid,
+  TRAIT_GRID_SIZE,
+} from "./nft/traits.js";
 import { getNftTokenId } from "./nft/normalize.js";
 import { generateLayouts } from "./layout/generate.js";
 import { getExportDimensionsForLayout } from "./layout/dimensions.js";
@@ -112,7 +118,7 @@ export async function buildGridForTraitMatch(traitType, traitValue) {
   return { ...result, traitType, traitValue, count: TRAIT_GRID_SIZE };
 }
 
-/** Canonical LT3 art folder on IPFS (same CID OpenSea uses for original_image_url). */
+/** Canonical LT3 art folder on IPFS (fallback if OpenSea metadata fetch fails). */
 const LT3_IMAGE_IPFS_CID = "QmRYnu6yVbRPEk3yfkoQ11o1KAVjhxuP5FTs8gR58CE8nG";
 
 function nftStubFromTokenId(tokenId) {
@@ -120,11 +126,43 @@ function nftStubFromTokenId(tokenId) {
   return {
     tokenId: id,
     identifier: id,
-    original_image_url: `ipfs://${LT3_IMAGE_IPFS_CID}/${id}.png`,
+    // Put Pinata HTTPS first — OpenSea CDN hashes aren't predictable from id alone.
     image_url: `https://alchemy.mypinata.cloud/ipfs/${LT3_IMAGE_IPFS_CID}/${id}.png`,
-    display_image_url: `https://lt3tools.com/tools/assets/lt3/${id}.jpg`,
-    contract: { address: "0x4ef6f6a7ee7d1cf7f1f7bfad2ba56baab868de48" },
+    display_image_url: `https://alchemy.mypinata.cloud/ipfs/${LT3_IMAGE_IPFS_CID}/${id}.png`,
+    original_image_url: `ipfs://${LT3_IMAGE_IPFS_CID}/${id}.png`,
+    contract: { address: LT3_CONTRACT_LC },
   };
+}
+
+/**
+ * Resolve token ids to OpenSea NFT objects (CDN image URLs) with IPFS stubs as fallback.
+ * @param {string[]} tokenIds
+ */
+async function resolveNftsForTokenIds(tokenIds) {
+  if (!OPENSEA_API_KEY) {
+    return tokenIds.map(nftStubFromTokenId);
+  }
+
+  const out = new Array(tokenIds.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(10, tokenIds.length) }, async () => {
+    while (cursor < tokenIds.length) {
+      const index = cursor;
+      cursor += 1;
+      const id = tokenIds[index];
+      try {
+        const data = await fetchJson(
+          `https://api.opensea.io/api/v2/chain/ethereum/contract/${LT3_CONTRACT_LC}/nfts/${id}`,
+          apiHeaders()
+        );
+        out[index] = data?.nft ? normalizeOpenSeaNft(data.nft) : nftStubFromTokenId(id);
+      } catch {
+        out[index] = nftStubFromTokenId(id);
+      }
+    }
+  });
+  await Promise.all(workers);
+  return out.map((nft, i) => nft || nftStubFromTokenId(tokenIds[i]));
 }
 
 function squareGridLayout(count) {
@@ -154,18 +192,21 @@ export async function buildGridForTokenIds(tokenIds, options = {}) {
   const ids = [...new Set(tokenIds.map((id) => String(id)).filter((id) => /^\d+$/.test(id)))];
   if (!ids.length) throw new Error("No LT3 token ids to grid.");
 
-  const nfts = ids.map(nftStubFromTokenId);
+  const nfts = await resolveNftsForTokenIds(ids);
   const label = options.label || `token-grid-${ids.length}`;
   const collection = await loadLt3CollectionFromNfts(nfts, "token-grid", label, {
-    purpose: "grid",
+    purpose: "rarity-grid",
   });
 
   const fixed = squareGridLayout(collection.images.length);
+  const edge =
+    options.exportLongEdge ||
+    Math.min(1800, Math.max(1000, Math.round(Math.sqrt(collection.images.length) * 280)));
+
   if (fixed) {
-    const edge = options.exportLongEdge || Math.min(2400, Math.max(1200, collection.images.length * 120));
     const rendered = await renderLayoutToBuffer(fixed, collection.images, edge, edge, {
       preferJpeg: true,
-      jpegQuality: 88,
+      jpegQuality: 85,
     });
     return {
       address: collection.address,

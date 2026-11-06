@@ -114,11 +114,28 @@ async function handleChatMessage(message, client) {
       try {
         if (isRarityGridRequest(cleanText)) {
           console.log("[Chat] rarity grid request:", cleanText.slice(0, 120));
-          const rarityReply = await buildRarityGridReplyQueued(cleanText);
-          if (rarityReply) {
-            await message.reply({ content: rarityReply.caption, files: [rarityReply.attachment] });
-            return;
+          const pending = await message.reply("Building that rarity grid...");
+          try {
+            const rarityReply = await buildRarityGridReplyQueued(cleanText);
+            if (!rarityReply) {
+              await pending.edit("Couldn't start that rarity grid. Try again.");
+              return;
+            }
+            await pending.edit({
+              content: rarityReply.caption,
+              files: [rarityReply.attachment],
+            });
+          } catch (err) {
+            console.error("[Chat] rarity grid failed", err);
+            const msg =
+              err instanceof Error && err.message ? err.message : "Could not build that rarity grid.";
+            try {
+              await pending.edit(msg);
+            } catch {
+              await message.reply(msg);
+            }
           }
+          return;
         }
 
         if (isTraitGridRequest(cleanText)) {

@@ -31,28 +31,33 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
   const isGif = options.purpose === "gif";
   const isTraitGrid = options.purpose === "trait-grid";
   const isTraitSingle = options.purpose === "trait-single";
+  const isRarityGrid = options.purpose === "rarity-grid";
   const images = await loadNftImages(nfts, {
-    concurrency: isTraitGrid
-      ? TRAIT_GRID_IMAGE_CONCURRENCY
-      : isTraitSingle
-        ? 1
-        : isGif
-          ? imageFetchConcurrencyForGif(nfts.length)
-          : imageFetchConcurrencyForCount(nfts.length),
+    concurrency: isRarityGrid
+      ? Math.min(16, Math.max(8, nfts.length))
+      : isTraitGrid
+        ? TRAIT_GRID_IMAGE_CONCURRENCY
+        : isTraitSingle
+          ? 1
+          : isGif
+            ? imageFetchConcurrencyForGif(nfts.length)
+            : imageFetchConcurrencyForCount(nfts.length),
     maxLongEdge: isTraitSingle
       ? TRAIT_SINGLE_DECODE_LONG_EDGE
-      : isTraitGrid
-        ? TRAIT_GRID_DECODE_LONG_EDGE
-        : isGrid
-          ? gridDecodeLongEdgeForCount(nfts.length)
-          : isGif
-            ? gifDecodeLongEdgeForCount(nfts.length)
-            : 1200,
+      : isRarityGrid
+        ? 480
+        : isTraitGrid
+          ? TRAIT_GRID_DECODE_LONG_EDGE
+          : isGrid
+            ? gridDecodeLongEdgeForCount(nfts.length)
+            : isGif
+              ? gifDecodeLongEdgeForCount(nfts.length)
+              : 1200,
     // Grid/GIF: try CDN first, then IPFS. Trait singles want the full-res path.
-    maxUrlAttempts: isTraitSingle ? 10 : isTraitGrid ? 6 : isGrid || isGif ? 8 : 10,
-    preferCdn: isGrid || isGif || isTraitGrid,
+    maxUrlAttempts: isTraitSingle ? 10 : isRarityGrid ? 4 : isTraitGrid ? 6 : isGrid || isGif ? 8 : 10,
+    preferCdn: isGrid || isGif || isTraitGrid || isRarityGrid,
     preferHighRes: isTraitSingle,
-    fastImageFetch: isTraitGrid || isGif,
+    fastImageFetch: isTraitGrid || isGif || isRarityGrid,
     jpegQuality: isTraitSingle ? TRAIT_SINGLE_JPEG_QUALITY : 88,
     highQuality: isTraitSingle,
     minSourceEdge: isTraitSingle ? 900 : 0,
@@ -61,6 +66,11 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
 
   if (!images.length) {
     throw new Error(`Could not load any LT3 images for ${display}.`);
+  }
+  if (isRarityGrid && images.length < Math.max(4, nfts.length - 5)) {
+    throw new Error(
+      `Could only load ${images.length} of ${nfts.length} rare LT3 images — try again in a minute.`
+    );
   }
   if (isTraitGrid && images.length < nfts.length) {
     throw new Error(

@@ -12,7 +12,13 @@ import {
 function isCdnUrl(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return host.includes("alchemy.com") || host.includes("cloudinary.com");
+    return (
+      host.includes("alchemy.com") ||
+      host.includes("cloudinary.com") ||
+      host.includes("seadn.io") ||
+      host.includes("openseauserdata.com") ||
+      host.includes("pinata.cloud")
+    );
   } catch {
     return false;
   }
