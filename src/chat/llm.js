@@ -21,12 +21,14 @@ import {
   looksLikeBoringReply,
   looksLikeCaptionBotReply,
   looksLikeCluelessAgreement,
+  looksLikeDoubleTossBack,
   looksLikeLiteralArtDescription,
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
   looksLikeUnpromptedMoss,
   looksLikeInventedPersonReply,
+  fixDoubleTossBack,
   userGreetedFirst,
 } from "./systemPrompt.js";
 import { looksCutOff } from "./sanitize.js";
@@ -95,10 +97,15 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
 
   let text = await callModel(system, userText, { temperature: temp, replyContext });
 
+  if (text && looksLikeDoubleTossBack(text)) {
+    text = fixDoubleTossBack(text);
+  }
+
   if (
     text &&
     (looksLikeAssistantReply(text) ||
       looksLikeBoringReply(text) ||
+      looksLikeDoubleTossBack(text) ||
       looksLikeCluelessAgreement(text, userText) ||
       looksLikeRepetitiveComeback(text) ||
       looksLikePoetrySpam(text) ||
@@ -121,16 +128,22 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       ? "You opened with a greeting but they didn't say hello. Drop the hey/hi/hello and respond to what they said."
       : welcomeBack
       ? "Too repetitive or generic. They already know you're back. React to what THEY said — dry joke, playful, warm weirdness. No 'feels good to be back' or 'was dark' lines."
+      : looksLikeDoubleTossBack(text)
+        ? "You stacked two toss-backs (like Wbu? You?). Pick ONE question max, or none. Statement alone is fine."
       : looksLikeBoringReply(text)
-        ? "Too ChatGPT / bland. Be clever and fun. No LT3 universe, catching up on the latest, great pick, heart-headed essence, or therapist art talk."
+        ? "Too ChatGPT / bland. Be clever and fun. No vibes, LT3 universe, catching up on the latest, great pick, or therapist art talk."
       : isGreeting
-        ? "Too generic or AI. One short casual line. If they said sup, something like recharging circuits then Wbu. No LT3 universe talk."
+        ? "Too generic or AI. One short casual line about what you're doing. Optional single toss-back, not required. No vibes or LT3 universe talk."
         : looksLikePoetrySpam(text)
           ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
           : looksLikeRepetitiveComeback(text)
             ? "Comeback cliché. Skip the 'good to be back' script. Say something fresh and specific to their message."
             : "Too generic or boring. Add dry humor or a clever riff. Still short. Not a poem.";
     text = await callModel(`${system}\n\n${hint}`, userText, { temperature: temp, replyContext });
+  }
+
+  if (text && looksLikeDoubleTossBack(text)) {
+    text = fixDoubleTossBack(text);
   }
 
   if (

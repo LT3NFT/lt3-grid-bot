@@ -11,6 +11,8 @@ import {
   looksLikeUnpromptedGreeting,
   isReactionImageReply,
   isCasualCheckIn,
+  looksLikeDoubleTossBack,
+  fixDoubleTossBack,
 } from "./systemPrompt.js";
 import { SCRIPTED, matchScriptedTrigger, pickGreetingFallback } from "./triggers.js";
 
@@ -77,6 +79,7 @@ export async function buildChatReply(cleanText, userContext) {
   const skipStripQuestion =
     userContext?.barryLookingUpJoke || isCasualCheckIn(cleanText);
   reply = stripTrailingQuestion(reply, cleanText.includes("?") || skipStripQuestion);
+  if (looksLikeDoubleTossBack(reply)) reply = fixDoubleTossBack(reply);
   if (trigger?.kind === "trading") reply = sanitizeChatReply(appendNfa(reply));
   return reply;
 }

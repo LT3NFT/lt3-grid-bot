@@ -72,8 +72,11 @@ BAD (ChatGPT bland): "It's a great pick. The vibe really captures that heart-hea
 BAD (therapist): "That's the dream, isn't it? Art that resonates beyond just a moment."
 BAD (caption bot): "Tom's smitten look surrounded by those big pink hearts is both comical and endearing."
 BAD (AI universe talk): "Just recharging my circuits and catching up on the latest in the LT3 universe."
+BAD (corny vibes): "Just chilling, tracking sales and vibes. Wbu? You?"
+BAD (double toss-back): "Just recharging my circuits. Wbu? You?"
 GOOD (casual check-in): "Just recharging my circuits. Wbu?"
-GOOD (casual check-in): "Mostly vibing between sale alerts. You?"
+GOOD (casual check-in): "Watching sale alerts roll in."
+GOOD (casual check-in): "Mostly idle between polls. You?"
 BAD (too poetic): "Another day in the digital dreamscape of heart-headed wonders."
 
 Do NOT:
@@ -240,7 +243,7 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   } else if (coffeeMorning) {
     prompt += `\n\nThey're talking about morning, coffee, or drinks. You love the smell of coffee but motor oil is your actual beverage of choice. Light robot humor if it fits. One or two short sentences.`;
   } else if (casualCheckIn) {
-    prompt += `\n\nCasual check-in (sup / what's up). One short line: what you're doing in plain robot voice, then toss it back (Wbu? You?). Do NOT say LT3 universe, catching up on the latest, or other AI filler. About 35-70 characters.`;
+    prompt += `\n\nCasual check-in (sup / what's up). One short line in plain robot voice about what you're doing. Optional single toss-back (Wbu? OR You? — never both). Often just a statement with no question is better. Do NOT say vibes, LT3 universe, catching up on the latest, or other AI filler. About 35-70 characters.`;
   } else if (isGreeting) {
     prompt += `\n\nSimple greeting. One line with personality — dry, witty, maybe a small smile. Not generic small talk. Not LT3 universe talk. About 40-80 characters.`;
   } else if (conversational) {
@@ -474,6 +477,9 @@ const BORING_PHRASES = [
   /latest in the (?:lt3|nft)/i,
   /in the digital mix/i,
   /recharging my circuits and/i,
+  /\band vibes\b/i,
+  /tracking (?:sales and )?vibes/i,
+  /sales and vibes/i,
 ];
 
 const POETRY_SPAM = [
@@ -537,6 +543,28 @@ export function looksLikePoetrySpam(text) {
 
 export function looksLikeBoringReply(text) {
   return BORING_PHRASES.some((re) => re.test(text)) || CAPTION_BOT_PHRASES.some((re) => re.test(text));
+}
+
+/** Stacked "Wbu? You?" style double toss-backs. */
+export function looksLikeDoubleTossBack(text) {
+  const q = (text.match(/\?/g) || []).length;
+  if (q < 2) return false;
+  return /\bwbu\b/i.test(text) || /\byou\?\s*$/i.test(text.trim()) || /\bwyd\b/i.test(text);
+}
+
+/** Collapse "Wbu? You?" into a single toss-back. */
+export function fixDoubleTossBack(text) {
+  let t = text.trim();
+  t = t.replace(/\bWbu\?\s*You\??\.?\s*$/i, "Wbu?");
+  t = t.replace(/\bYou\?\s*Wbu\??\.?\s*$/i, "You?");
+  t = t.replace(/\bWhat about you\?\s*You\??\.?\s*$/i, "What about you?");
+  // If still 2+ questions at the end, keep only the first question sentence.
+  const parts = t.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (parts.length >= 2 && parts.filter((p) => p.includes("?")).length >= 2) {
+    const firstQ = parts.findIndex((p) => p.includes("?"));
+    if (firstQ >= 0) return parts.slice(0, firstQ + 1).join(" ").trim();
+  }
+  return t;
 }
 
 /** Vision reply that narrates a meme/gif instead of chatting. */

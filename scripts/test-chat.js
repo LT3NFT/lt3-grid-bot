@@ -22,6 +22,8 @@ import {
   looksLikeBoringReply,
   looksLikeCaptionBotReply,
   looksLikeCluelessAgreement,
+  looksLikeDoubleTossBack,
+  fixDoubleTossBack,
   looksLikeLiteralArtDescription,
   looksLikePoetrySpam,
   looksLikeRepetitiveComeback,
@@ -194,6 +196,18 @@ assert(
 assert(
   "keep wbu on check-in",
   stripTrailingQuestion("Just recharging my circuits. Wbu?", isCasualCheckIn("Sup")).includes("?")
+);
+assert(
+  "double toss-back detect",
+  looksLikeDoubleTossBack("Just chilling, tracking sales and vibes. Wbu? You?")
+);
+assert(
+  "fix double toss-back",
+  fixDoubleTossBack("Just recharging my circuits. Wbu? You?") === "Just recharging my circuits. Wbu?"
+);
+assert(
+  "sales and vibes detect",
+  looksLikeBoringReply("Just chilling, tracking sales and vibes. Wbu?")
 );
 assert("affectionate love this", isAffectionateReaction("I love this one!"));
 assert("affectionate till i die", isAffectionateReaction("This one will hopefully stay with me till I die."));
