@@ -10,6 +10,7 @@ import {
   userGreetedFirst,
   looksLikeUnpromptedGreeting,
   isReactionImageReply,
+  isCasualCheckIn,
 } from "./systemPrompt.js";
 import { SCRIPTED, matchScriptedTrigger, pickGreetingFallback } from "./triggers.js";
 
@@ -73,7 +74,8 @@ export async function buildChatReply(cleanText, userContext) {
   if (!userGreetedFirst(cleanText) && looksLikeUnpromptedGreeting(reply)) {
     reply = stripLeadingGreeting(reply);
   }
-  const skipStripQuestion = userContext?.barryLookingUpJoke;
+  const skipStripQuestion =
+    userContext?.barryLookingUpJoke || isCasualCheckIn(cleanText);
   reply = stripTrailingQuestion(reply, cleanText.includes("?") || skipStripQuestion);
   if (trigger?.kind === "trading") reply = sanitizeChatReply(appendNfa(reply));
   return reply;

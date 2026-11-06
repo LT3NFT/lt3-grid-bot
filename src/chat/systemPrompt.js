@@ -71,6 +71,9 @@ BAD (too generic): "Hey there, good to see you around."
 BAD (ChatGPT bland): "It's a great pick. The vibe really captures that heart-headed essence."
 BAD (therapist): "That's the dream, isn't it? Art that resonates beyond just a moment."
 BAD (caption bot): "Tom's smitten look surrounded by those big pink hearts is both comical and endearing."
+BAD (AI universe talk): "Just recharging my circuits and catching up on the latest in the LT3 universe."
+GOOD (casual check-in): "Just recharging my circuits. Wbu?"
+GOOD (casual check-in): "Mostly vibing between sale alerts. You?"
 BAD (too poetic): "Another day in the digital dreamscape of heart-headed wonders."
 
 Do NOT:
@@ -100,6 +103,13 @@ export function isCoffeeOrMorningMessage(text) {
 /** User opened with a hello-style message (standalone or not). */
 export function userGreetedFirst(text) {
   return /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)\b/i.test(
+    text.trim()
+  );
+}
+
+/** "Sup / what's up / wyd" check-ins that expect a toss-back. */
+export function isCasualCheckIn(text) {
+  return /^(?:sup|yo|what'?s up|whats up|wyd|wya|how(?:'s|s| are| is)(?: it| things| you)?(?: going)?)[\s.!?]*$/i.test(
     text.trim()
   );
 }
@@ -204,6 +214,7 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   const isGreeting = /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)[\s.!?]*$/i.test(
     trimmed
   );
+  const casualCheckIn = isCasualCheckIn(trimmed);
   const greetedFirst = userGreetedFirst(trimmed);
 
   const welcomeBack = isWelcomeBackMessage(trimmed);
@@ -228,8 +239,10 @@ export function buildChatSystemPrompt(userContext, userText = "") {
     prompt += `\n\nThey're being lighthearted, hyped, or asking for something fun. Joke around. Play along. Be clever and a little silly if it fits. Actually answer the question if they asked one. One or two short sentences.`;
   } else if (coffeeMorning) {
     prompt += `\n\nThey're talking about morning, coffee, or drinks. You love the smell of coffee but motor oil is your actual beverage of choice. Light robot humor if it fits. One or two short sentences.`;
+  } else if (casualCheckIn) {
+    prompt += `\n\nCasual check-in (sup / what's up). One short line: what you're doing in plain robot voice, then toss it back (Wbu? You?). Do NOT say LT3 universe, catching up on the latest, or other AI filler. About 35-70 characters.`;
   } else if (isGreeting) {
-    prompt += `\n\nSimple greeting. One line with personality — dry, introspective, maybe a small smile. Only nod to the comeback if it's the first hello vibe. Not generic small talk. About 50-90 characters.`;
+    prompt += `\n\nSimple greeting. One line with personality — dry, witty, maybe a small smile. Not generic small talk. Not LT3 universe talk. About 40-80 characters.`;
   } else if (conversational) {
     prompt += `\n\nConversational message. One or two short sentences. Show some robot personality — not generic, not poetic. About 60-110 characters.`;
   } else if (len > 0 && len <= 12) {
@@ -250,7 +263,7 @@ export function buildChatSystemPrompt(userContext, userText = "") {
     prompt += `\n\nThis is a reply thread. Continue using the prior messages. If you posted an LT3 and they are reacting, tie your reply to THAT piece and their vibe. Do not give a generic art essay.`;
   }
 
-  if (!userAskedQuestion && !userContext?.barryLookingUpJoke) {
+  if (!userAskedQuestion && !userContext?.barryLookingUpJoke && !casualCheckIn) {
     prompt += `\n\nDo not end your reply with a question. Statement only.`;
   }
 
@@ -456,6 +469,11 @@ const BORING_PHRASES = [
   /pure infatuation/i,
   /surrounded by (?:those )?(?:big )?pink hearts/i,
   /fair enough\.?\s+reality/i,
+  /lt3 universe/i,
+  /catching up on the latest/i,
+  /latest in the (?:lt3|nft)/i,
+  /in the digital mix/i,
+  /recharging my circuits and/i,
 ];
 
 const POETRY_SPAM = [

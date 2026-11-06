@@ -122,9 +122,9 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       : welcomeBack
       ? "Too repetitive or generic. They already know you're back. React to what THEY said — dry joke, playful, warm weirdness. No 'feels good to be back' or 'was dark' lines."
       : looksLikeBoringReply(text)
-        ? "Too ChatGPT / bland. Be clever and fun. Specific to their message or the LT3 in the thread. No great pick, heart-headed essence, or therapist art talk."
+        ? "Too ChatGPT / bland. Be clever and fun. No LT3 universe, catching up on the latest, great pick, heart-headed essence, or therapist art talk."
       : isGreeting
-        ? "Too generic, too short, or too poetic. One line with robot personality — dry, witty, a little smile. Not NPC small talk."
+        ? "Too generic or AI. One short casual line. If they said sup, something like recharging circuits then Wbu. No LT3 universe talk."
         : looksLikePoetrySpam(text)
           ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
           : looksLikeRepetitiveComeback(text)

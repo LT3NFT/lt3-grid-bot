@@ -14,6 +14,7 @@ import {
   isCoffeeOrMorningMessage,
   isLightheartedMessage,
   isAffectionateReaction,
+  isCasualCheckIn,
   isReactionImageReply,
   isRecallQuestion,
   isWelcomeBackMessage,
@@ -180,6 +181,19 @@ assert(
   looksLikeCaptionBotReply(
     "Tom's smitten look surrounded by those big pink hearts is both comical and endearing. It captures that moment of pure infatuation."
   )
+);
+assert("casual check-in sup", isCasualCheckIn("Sup"));
+assert("casual check-in whats up", isCasualCheckIn("whats up"));
+assert("gm not casual check-in", !isCasualCheckIn("gm"));
+assert(
+  "lt3 universe filler detect",
+  looksLikeBoringReply(
+    "Just recharging my circuits and catching up on the latest in the LT3 universe."
+  )
+);
+assert(
+  "keep wbu on check-in",
+  stripTrailingQuestion("Just recharging my circuits. Wbu?", isCasualCheckIn("Sup")).includes("?")
 );
 assert("affectionate love this", isAffectionateReaction("I love this one!"));
 assert("affectionate till i die", isAffectionateReaction("This one will hopefully stay with me till I die."));
