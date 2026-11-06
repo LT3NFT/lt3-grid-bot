@@ -58,33 +58,56 @@ async function shouldRespond(message, client) {
   return isReplyToBot(message, client);
 }
 
+/** Discord typing lasts ~10s — refresh until the reply finishes. */
+function startTypingKeepalive(channel) {
+  if (!channel?.sendTyping) return () => {};
+  let stopped = false;
+  const pulse = async () => {
+    while (!stopped) {
+      try {
+        await channel.sendTyping();
+      } catch {
+        // channel gone / missing perms — stop quietly
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 8000));
+    }
+  };
+  void pulse();
+  return () => {
+    stopped = true;
+  };
+}
+
 async function handleChatMessage(message, client) {
   if (!(await shouldRespond(message, client))) return;
 
-  const imageUrls = getImageUrlsFromMessage(message);
-  const displayName = message.member?.displayName ?? message.author.globalName ?? message.author.username;
-  const username = message.author.username;
-  const replyContext = await fetchReplyThreadContext(message, client);
-
-  let cleanText = stripBotMention(message.content, client);
-  if (!cleanText && imageUrls.length) {
-    // Don't force "analyze this LT3" on reaction gifs in a reply thread.
-    cleanText = replyContext?.replyingToBot
-      ? "(sent a reaction image/gif with no text)"
-      : "(shared an image)";
-  }
-
-  const isCear = isCearUser(username, displayName);
-  const isBarry = isBarryUser(username, displayName);
-  const isFather = isFatherUser(username, displayName);
-  const isShg = isShgUser(username);
-  const isJack = isJackUser(username, displayName);
-  const isTyler = isTylerUser(username);
-  const barryLookingUpJoke = isBarry && shouldBarryLookingUpJoke(cleanText, username, displayName);
-  const shgUseNickname = isShg && shouldUseShgNickname(cleanText, username, displayName);
-  const shgNickname = shgUseNickname ? pickShgNickname(`${username}:${cleanText}`) : null;
+  const stopTyping = startTypingKeepalive(message.channel);
 
   try {
+    const imageUrls = getImageUrlsFromMessage(message);
+    const displayName = message.member?.displayName ?? message.author.globalName ?? message.author.username;
+    const username = message.author.username;
+    const replyContext = await fetchReplyThreadContext(message, client);
+
+    let cleanText = stripBotMention(message.content, client);
+    if (!cleanText && imageUrls.length) {
+      // Don't force "analyze this LT3" on reaction gifs in a reply thread.
+      cleanText = replyContext?.replyingToBot
+        ? "(sent a reaction image/gif with no text)"
+        : "(shared an image)";
+    }
+
+    const isCear = isCearUser(username, displayName);
+    const isBarry = isBarryUser(username, displayName);
+    const isFather = isFatherUser(username, displayName);
+    const isShg = isShgUser(username);
+    const isJack = isJackUser(username, displayName);
+    const isTyler = isTylerUser(username);
+    const barryLookingUpJoke = isBarry && shouldBarryLookingUpJoke(cleanText, username, displayName);
+    const shgUseNickname = isShg && shouldUseShgNickname(cleanText, username, displayName);
+    const shgNickname = shgUseNickname ? pickShgNickname(`${username}:${cleanText}`) : null;
+
     if (imageUrls.length === 0) {
       try {
         if (isTraitGridRequest(cleanText)) {
@@ -129,6 +152,8 @@ async function handleChatMessage(message, client) {
     await message.reply(reply);
   } catch (err) {
     console.error("[Chat] reply failed", err);
+  } finally {
+    stopTyping();
   }
 }
 
