@@ -15,8 +15,10 @@ import {
   isLightheartedMessage,
   isAffectionateReaction,
   isCasualCheckIn,
+  isPersonalShare,
   isReactionImageReply,
   isRecallQuestion,
+  looksLikeBannedVibeTalk,
   isWelcomeBackMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
@@ -209,6 +211,18 @@ assert(
   "sales and vibes detect",
   looksLikeBoringReply("Just chilling, tracking sales and vibes. Wbu?")
 );
+assert(
+  "solid vibe detect",
+  looksLikeBoringReply(
+    "No oil today, but I'm always revved up for the next batch. Cats and coding sounds like a solid vibe."
+  )
+);
+assert("any vibe word banned", looksLikeBannedVibeTalk("That piece has a quiet vibe."));
+assert(
+  "art vibe allow only corny",
+  !looksLikeBannedVibeTalk("Quiet piece. Hits soft.", { allowArtVibe: true })
+);
+assert("personal share cats", isPersonalShare("Just hanging with my cats doing some coding. Any motor oil today"));
 assert("affectionate love this", isAffectionateReaction("I love this one!"));
 assert("affectionate till i die", isAffectionateReaction("This one will hopefully stay with me till I die."));
 assert(

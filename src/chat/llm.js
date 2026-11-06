@@ -131,9 +131,9 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       : looksLikeDoubleTossBack(text)
         ? "You stacked two toss-backs (like Wbu? You?). Pick ONE question max, or none. Statement alone is fine."
       : looksLikeBoringReply(text)
-        ? "Too ChatGPT / bland. Be clever and fun. No vibes, LT3 universe, catching up on the latest, great pick, or therapist art talk."
+        ? "Too ChatGPT / bland. Be clever and fun. Never say vibe/vibes. No LT3 universe, catching up on the latest, great pick, or therapist art talk. If they mentioned cats/pets/coding, react to that with robot self-awareness (no body)."
       : isGreeting
-        ? "Too generic or AI. One short casual line about what you're doing. Optional single toss-back, not required. No vibes or LT3 universe talk."
+        ? "Too generic or AI. One short casual line about what you're doing. Optional single toss-back, not required. Never say vibe/vibes or LT3 universe."
         : looksLikePoetrySpam(text)
           ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
           : looksLikeRepetitiveComeback(text)
@@ -219,7 +219,7 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
   if (
     text &&
     (looksLikeAssistantReply(text) ||
-      looksLikeBoringReply(text) ||
+      looksLikeBoringReply(text, { allowArtVibe: !reactionMode }) ||
       looksLikeCaptionBotReply(text) ||
       looksLikePoetrySpam(text) ||
       (!reactionMode && looksLikeLiteralArtDescription(text)) ||
@@ -230,8 +230,8 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
       ? "Too caption-bot / ChatGPT. Do not narrate the gif. Tie it to the LT3 or vibe in the thread with one clever dry line. Fun, short."
       : looksLikeLiteralArtDescription(text)
         ? "Too much catalog description. They want YOUR take. One quick detail nod, then your interpretation. Avoid 'features a' and 'accented by'."
-        : looksLikeBoringReply(text) || looksLikeCaptionBotReply(text)
-          ? "Too bland. Be clever and specific. No heart-headed essence, great pick, or soft AI filler."
+        : looksLikeBoringReply(text, { allowArtVibe: true }) || looksLikeCaptionBotReply(text)
+          ? "Too bland. Be clever and specific. No heart-headed essence, great pick, solid vibe, or soft AI filler."
           : looksLikePoetrySpam(text)
             ? "Too poetic. Give your personal read with LT3BOT personality. 2-3 short sentences."
             : looksCutOff(text)
