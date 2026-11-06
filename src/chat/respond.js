@@ -4,7 +4,13 @@ import { extractTokenId, fetchLt3TokenMetadata } from "./lt3Metadata.js";
 import { maxCharsForInput } from "./length.js";
 import { generateChatReply, generateVisionReply } from "./llm.js";
 import { sanitizeChatReply } from "./sanitize.js";
-import { stripTrailingQuestion, stripLeadingGreeting, userGreetedFirst, looksLikeUnpromptedGreeting } from "./systemPrompt.js";
+import {
+  stripTrailingQuestion,
+  stripLeadingGreeting,
+  userGreetedFirst,
+  looksLikeUnpromptedGreeting,
+  isReactionImageReply,
+} from "./systemPrompt.js";
 import { SCRIPTED, matchScriptedTrigger, pickGreetingFallback } from "./triggers.js";
 
 function appendNfa(text) {
@@ -18,9 +24,12 @@ function appendNfa(text) {
 export async function buildChatReply(cleanText, userContext) {
   const imageUrls = userContext?.imageUrls ?? [];
   const hasImages = imageUrls.length > 0;
+  const reactionImage = hasImages && isReactionImageReply(cleanText, userContext);
   const trigger = matchScriptedTrigger(cleanText);
   const isGreeting = trigger?.kind === "greeting";
-  let maxChars = maxCharsForInput(cleanText, { isGreeting, isImageAnalysis: hasImages });
+  let maxChars = reactionImage
+    ? 120
+    : maxCharsForInput(cleanText, { isGreeting, isImageAnalysis: hasImages });
 
   if (trigger?.kind === "empty" && !hasImages) return SCRIPTED.empty;
   if (trigger?.kind === "egg") return sanitizeChatReply("🥚", { allowEgg: true });

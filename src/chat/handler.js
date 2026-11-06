@@ -62,11 +62,18 @@ async function handleChatMessage(message, client) {
   if (!(await shouldRespond(message, client))) return;
 
   const imageUrls = getImageUrlsFromMessage(message);
-  const cleanText =
-    stripBotMention(message.content, client) ||
-    (imageUrls.length ? "What do you think of this LT3?" : "");
   const displayName = message.member?.displayName ?? message.author.globalName ?? message.author.username;
   const username = message.author.username;
+  const replyContext = await fetchReplyThreadContext(message, client);
+
+  let cleanText = stripBotMention(message.content, client);
+  if (!cleanText && imageUrls.length) {
+    // Don't force "analyze this LT3" on reaction gifs in a reply thread.
+    cleanText = replyContext?.replyingToBot
+      ? "(sent a reaction image/gif with no text)"
+      : "(shared an image)";
+  }
+
   const isCear = isCearUser(username, displayName);
   const isBarry = isBarryUser(username, displayName);
   const isFather = isFatherUser(username, displayName);
@@ -103,8 +110,6 @@ async function handleChatMessage(message, client) {
         return;
       }
     }
-
-    const replyContext = await fetchReplyThreadContext(message, client);
 
     const reply = await buildChatReply(cleanText, {
       username,

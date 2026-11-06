@@ -14,9 +14,12 @@ import {
   buildVisionAnalysisPrompt,
   isWelcomeBackMessage,
   isLightheartedMessage,
+  isAffectionateReaction,
+  isReactionImageReply,
   isRecallQuestion,
   looksLikeAssistantReply,
   looksLikeBoringReply,
+  looksLikeCaptionBotReply,
   looksLikeCluelessAgreement,
   looksLikeLiteralArtDescription,
   looksLikePoetrySpam,
@@ -85,7 +88,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
   const system = buildChatSystemPrompt(userContext, userText);
   const cap = maxCharsForInput(userText, { isGreeting });
   const welcomeBack = isWelcomeBackMessage(userText);
-  const lighthearted = isLightheartedMessage(userText);
+  const lighthearted = isLightheartedMessage(userText) || isAffectionateReaction(userText);
   const greetedFirst = userGreetedFirst(userText);
   const temp = welcomeBack || lighthearted ? 0.95 : 0.88;
   const replyContext = userContext?.replyContext ?? null;
@@ -118,13 +121,15 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       ? "You opened with a greeting but they didn't say hello. Drop the hey/hi/hello and respond to what they said."
       : welcomeBack
       ? "Too repetitive or generic. They already know you're back. React to what THEY said — dry joke, playful, warm weirdness. No 'feels good to be back' or 'was dark' lines."
+      : looksLikeBoringReply(text)
+        ? "Too ChatGPT / bland. Be clever and fun. Specific to their message or the LT3 in the thread. No great pick, heart-headed essence, or therapist art talk."
       : isGreeting
-        ? "Too generic, too short, or too poetic. One line with robot personality — dry, introspective, a little smile. Not NPC small talk."
+        ? "Too generic, too short, or too poetic. One line with robot personality — dry, witty, a little smile. Not NPC small talk."
         : looksLikePoetrySpam(text)
           ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
           : looksLikeRepetitiveComeback(text)
             ? "Comeback cliché. Skip the 'good to be back' script. Say something fresh and specific to their message."
-            : "Too generic or boring. Add dry humor or quiet introspection. Still short. Not a poem.";
+            : "Too generic or boring. Add dry humor or a clever riff. Still short. Not a poem.";
     text = await callModel(`${system}\n\n${hint}`, userText, { temperature: temp, replyContext });
   }
 
@@ -159,25 +164,41 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
   const openai = getVisionClient();
   if (!openai || !imageUrls.length) return null;
 
-  const system = buildVisionAnalysisPrompt(userContext, userText, metadata);
-  const cap = maxCharsForInput(userText, { isImageAnalysis: true });
+  const reactionMode = isReactionImageReply(userText, userContext);
+  const system = buildVisionAnalysisPrompt(userContext, userText, metadata, { reactionMode });
+  const cap = maxCharsForInput(userText, {
+    isImageAnalysis: true,
+    isGreeting: false,
+  });
   const userAskedQuestion = userText.includes("?");
+  const replyContext = userContext?.replyContext ?? null;
 
-  const textPart = userText.trim() || "Analyze this LT3.";
+  const textPart = reactionMode
+    ? userText.trim() || "(sent a reaction image/gif with no text — riff on it using the thread)"
+    : userText.trim() || "What do you think of this LT3?";
+
+  /** @type {Array<{ role: "system"|"user"|"assistant", content: string | Array<{ type: string, text?: string, image_url?: { url: string, detail: string } }> }>} */
+  const messages = [{ role: "system", content: system }];
+
+  if (replyContext?.thread?.length) {
+    for (const entry of replyContext.thread) {
+      if (!entry.content) continue;
+      messages.push({ role: entry.role, content: entry.content.slice(0, 400) });
+    }
+  }
+
   /** @type {Array<{ type: string, text?: string, image_url?: { url: string, detail: string } }>} */
   const content = [{ type: "text", text: textPart.slice(0, 800) }];
   for (const url of imageUrls.slice(0, 1)) {
-    content.push({ type: "image_url", image_url: { url, detail: "high" } });
+    content.push({ type: "image_url", image_url: { url, detail: reactionMode ? "low" : "high" } });
   }
+  messages.push({ role: "user", content });
 
   const completion = await openai.chat.completions.create({
     model: CHAT_VISION_MODEL,
-    temperature: 0.9,
-    max_tokens: CHAT_VISION_MAX_TOKENS,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content },
-    ],
+    temperature: reactionMode ? 0.95 : 0.9,
+    max_tokens: reactionMode ? Math.min(CHAT_VISION_MAX_TOKENS, 90) : CHAT_VISION_MAX_TOKENS,
+    messages,
   });
 
   let text = completion.choices?.[0]?.message?.content?.trim() || null;
@@ -186,25 +207,30 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
     text &&
     (looksLikeAssistantReply(text) ||
       looksLikeBoringReply(text) ||
+      looksLikeCaptionBotReply(text) ||
       looksLikePoetrySpam(text) ||
-      looksLikeLiteralArtDescription(text) ||
+      (!reactionMode && looksLikeLiteralArtDescription(text)) ||
       looksCutOff(text) ||
       text.length > cap + 30)
   ) {
-    const hint = looksLikeLiteralArtDescription(text)
-      ? "Too much catalog description. They want YOUR take. How does it make you feel? What meaning do you read into it? One quick detail nod, then your interpretation. Avoid 'features a' and 'accented by'."
-      : looksLikePoetrySpam(text)
-        ? "Too poetic. Give your personal read on the piece with LT3BOT personality. How does it feel? 2-3 short sentences."
-        : looksCutOff(text)
-          ? `Reply got cut off. Finish the thought. Under ${cap} characters.`
-          : "Too generic. Share how THIS lt3 makes you feel or what it means to you. Specific, not NPC praise.";
+    const hint = reactionMode
+      ? "Too caption-bot / ChatGPT. Do not narrate the gif. Tie it to the LT3 or vibe in the thread with one clever dry line. Fun, short."
+      : looksLikeLiteralArtDescription(text)
+        ? "Too much catalog description. They want YOUR take. One quick detail nod, then your interpretation. Avoid 'features a' and 'accented by'."
+        : looksLikeBoringReply(text) || looksLikeCaptionBotReply(text)
+          ? "Too bland. Be clever and specific. No heart-headed essence, great pick, or soft AI filler."
+          : looksLikePoetrySpam(text)
+            ? "Too poetic. Give your personal read with LT3BOT personality. 2-3 short sentences."
+            : looksCutOff(text)
+              ? `Reply got cut off. Finish the thought. Under ${cap} characters.`
+              : "Too generic. Specific, funny or dry-warm. Not NPC praise.";
     const retry = await openai.chat.completions.create({
       model: CHAT_VISION_MODEL,
-      temperature: 0.88,
-      max_tokens: CHAT_VISION_MAX_TOKENS,
+      temperature: 0.92,
+      max_tokens: reactionMode ? Math.min(CHAT_VISION_MAX_TOKENS, 90) : CHAT_VISION_MAX_TOKENS,
       messages: [
         { role: "system", content: `${system}\n\n${hint}` },
-        { role: "user", content },
+        ...messages.slice(1),
       ],
     });
     text = retry.choices?.[0]?.message?.content?.trim() || text;

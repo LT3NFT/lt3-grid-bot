@@ -13,10 +13,13 @@ import {
   shouldUseShgNickname,
   isCoffeeOrMorningMessage,
   isLightheartedMessage,
+  isAffectionateReaction,
+  isReactionImageReply,
   isRecallQuestion,
   isWelcomeBackMessage,
   looksLikeAssistantReply,
   looksLikeBoringReply,
+  looksLikeCaptionBotReply,
   looksLikeCluelessAgreement,
   looksLikeLiteralArtDescription,
   looksLikePoetrySpam,
@@ -164,6 +167,36 @@ assert(
 assert("assistant phrase detect", looksLikeAssistantReply("Hello. How can I assist you today?"));
 assert("boring phrase detect", looksLikeBoringReply("Hey there, good to see you around."));
 assert("boring vibe detect", looksLikeBoringReply("Just hanging out, keeping an eye on the LT3 vibe."));
+assert(
+  "bland heart-headed detect",
+  looksLikeBoringReply("It's a great pick. The vibe really captures that heart-headed essence.")
+);
+assert(
+  "therapist art detect",
+  looksLikeBoringReply("That's the dream, isn't it? Art that resonates beyond just a moment.")
+);
+assert(
+  "caption bot detect",
+  looksLikeCaptionBotReply(
+    "Tom's smitten look surrounded by those big pink hearts is both comical and endearing. It captures that moment of pure infatuation."
+  )
+);
+assert("affectionate love this", isAffectionateReaction("I love this one!"));
+assert("affectionate till i die", isAffectionateReaction("This one will hopefully stay with me till I die."));
+assert(
+  "reaction image reply detect",
+  isReactionImageReply("(sent a reaction image/gif with no text)", {
+    imageUrls: ["https://cdn.discordapp.com/x.gif"],
+    replyContext: { replyingToBot: true, thread: [{ role: "assistant", content: "Here is #1559" }] },
+  })
+);
+assert(
+  "standalone image not reaction",
+  !isReactionImageReply("(shared an image)", {
+    imageUrls: ["https://cdn.discordapp.com/x.png"],
+    replyContext: { replyingToBot: false, thread: [] },
+  })
+);
 assert("comeback cliche detect", looksLikeRepetitiveComeback("Yeah, I was dark for a while. Feels good to be back."));
 assert("comeback cliche detect 2", looksLikeRepetitiveComeback("Glad to be back in the digital mix."));
 assert("welcome back detect", isWelcomeBackMessage("omg you're back"));
