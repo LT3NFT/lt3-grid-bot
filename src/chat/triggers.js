@@ -20,9 +20,11 @@ const GREETING_RE =
 const GREETING_FALLBACK_POOL = [
   "Gm. Still booted. Still here.",
   "Just recharging my circuits.",
+  "Cooking a grid in the background.",
+  "Idle between gif jobs.",
+  "Sorting trait pulls. Organized chaos.",
   "Watching sale alerts roll in.",
   "Morning. Quiet day on the chain.",
-  "Mostly idle between polls.",
   "Hey. Back online and slightly existential.",
 ];
 
