@@ -1,15 +1,9 @@
-import { gridTimeoutForCount, LT3_CONTRACT_LC, OPENSEA_API_KEY, TRAIT_GRID_EXPORT_LONG_EDGE } from "./config.js";
+import { gridTimeoutForCount, LT3_CONTRACT_LC, TRAIT_GRID_EXPORT_LONG_EDGE } from "./config.js";
 import {
   fetchAllLt3NftsForOwner,
   loadLt3CollectionFromNfts,
 } from "./nft/collection.js";
-import { apiHeaders, fetchJson } from "./chat/opensea.js";
-import {
-  normalizeOpenSeaNft,
-  pickRandomNftForTrait,
-  pickRandomNftsForTraitGrid,
-  TRAIT_GRID_SIZE,
-} from "./nft/traits.js";
+import { pickRandomNftForTrait, pickRandomNftsForTraitGrid, TRAIT_GRID_SIZE } from "./nft/traits.js";
 import { getNftTokenId } from "./nft/normalize.js";
 import { generateLayouts } from "./layout/generate.js";
 import { getExportDimensionsForLayout } from "./layout/dimensions.js";
@@ -118,51 +112,22 @@ export async function buildGridForTraitMatch(traitType, traitValue) {
   return { ...result, traitType, traitValue, count: TRAIT_GRID_SIZE };
 }
 
-/** Canonical LT3 art folder on IPFS (fallback if OpenSea metadata fetch fails). */
+/** Canonical LT3 art folder — direct Pinata HTTPS (no per-token OpenSea round trips). */
 const LT3_IMAGE_IPFS_CID = "QmRYnu6yVbRPEk3yfkoQ11o1KAVjhxuP5FTs8gR58CE8nG";
+const LT3_PINATA_GATEWAY = `https://alchemy.mypinata.cloud/ipfs/${LT3_IMAGE_IPFS_CID}`;
+const LT3_DWEB_GATEWAY = `https://dweb.link/ipfs/${LT3_IMAGE_IPFS_CID}`;
 
 function nftStubFromTokenId(tokenId) {
   const id = String(tokenId);
   return {
     tokenId: id,
     identifier: id,
-    // Put Pinata HTTPS first — OpenSea CDN hashes aren't predictable from id alone.
-    image_url: `https://alchemy.mypinata.cloud/ipfs/${LT3_IMAGE_IPFS_CID}/${id}.png`,
-    display_image_url: `https://alchemy.mypinata.cloud/ipfs/${LT3_IMAGE_IPFS_CID}/${id}.png`,
-    original_image_url: `ipfs://${LT3_IMAGE_IPFS_CID}/${id}.png`,
+    image_url: `${LT3_PINATA_GATEWAY}/${id}.png`,
+    display_image_url: `${LT3_PINATA_GATEWAY}/${id}.png`,
+    // Second gateway only if Pinata flakes — kept on original_image_url for fallback.
+    original_image_url: `${LT3_DWEB_GATEWAY}/${id}.png`,
     contract: { address: LT3_CONTRACT_LC },
   };
-}
-
-/**
- * Resolve token ids to OpenSea NFT objects (CDN image URLs) with IPFS stubs as fallback.
- * @param {string[]} tokenIds
- */
-async function resolveNftsForTokenIds(tokenIds) {
-  if (!OPENSEA_API_KEY) {
-    return tokenIds.map(nftStubFromTokenId);
-  }
-
-  const out = new Array(tokenIds.length);
-  let cursor = 0;
-  const workers = Array.from({ length: Math.min(10, tokenIds.length) }, async () => {
-    while (cursor < tokenIds.length) {
-      const index = cursor;
-      cursor += 1;
-      const id = tokenIds[index];
-      try {
-        const data = await fetchJson(
-          `https://api.opensea.io/api/v2/chain/ethereum/contract/${LT3_CONTRACT_LC}/nfts/${id}`,
-          apiHeaders()
-        );
-        out[index] = data?.nft ? normalizeOpenSeaNft(data.nft) : nftStubFromTokenId(id);
-      } catch {
-        out[index] = nftStubFromTokenId(id);
-      }
-    }
-  });
-  await Promise.all(workers);
-  return out.map((nft, i) => nft || nftStubFromTokenId(tokenIds[i]));
 }
 
 function squareGridLayout(count) {
@@ -192,7 +157,7 @@ export async function buildGridForTokenIds(tokenIds, options = {}) {
   const ids = [...new Set(tokenIds.map((id) => String(id)).filter((id) => /^\d+$/.test(id)))];
   if (!ids.length) throw new Error("No LT3 token ids to grid.");
 
-  const nfts = await resolveNftsForTokenIds(ids);
+  const nfts = ids.map(nftStubFromTokenId);
   const label = options.label || `token-grid-${ids.length}`;
   const collection = await loadLt3CollectionFromNfts(nfts, "token-grid", label, {
     purpose: "rarity-grid",
@@ -201,12 +166,12 @@ export async function buildGridForTokenIds(tokenIds, options = {}) {
   const fixed = squareGridLayout(collection.images.length);
   const edge =
     options.exportLongEdge ||
-    Math.min(1800, Math.max(1000, Math.round(Math.sqrt(collection.images.length) * 280)));
+    Math.min(1600, Math.max(900, Math.round(Math.sqrt(collection.images.length) * 260)));
 
   if (fixed) {
     const rendered = await renderLayoutToBuffer(fixed, collection.images, edge, edge, {
       preferJpeg: true,
-      jpegQuality: 85,
+      jpegQuality: 82,
     });
     return {
       address: collection.address,

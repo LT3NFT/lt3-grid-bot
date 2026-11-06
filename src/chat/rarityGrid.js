@@ -7,7 +7,7 @@ import { withTimeout } from "../util/wallet-resolve.js";
 const DEFAULT_COUNT = 25;
 const MIN_COUNT = 4;
 const MAX_COUNT = 36;
-const RARITY_GRID_TIMEOUT_MS = 90_000;
+const RARITY_GRID_TIMEOUT_MS = 45_000;
 
 /**
  * Natural-language "top N rarest/rarity" grid requests.

@@ -34,7 +34,7 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
   const isRarityGrid = options.purpose === "rarity-grid";
   const images = await loadNftImages(nfts, {
     concurrency: isRarityGrid
-      ? Math.min(16, Math.max(8, nfts.length))
+      ? Math.min(25, Math.max(12, nfts.length))
       : isTraitGrid
         ? TRAIT_GRID_IMAGE_CONCURRENCY
         : isTraitSingle
@@ -45,7 +45,7 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
     maxLongEdge: isTraitSingle
       ? TRAIT_SINGLE_DECODE_LONG_EDGE
       : isRarityGrid
-        ? 480
+        ? 360
         : isTraitGrid
           ? TRAIT_GRID_DECODE_LONG_EDGE
           : isGrid
@@ -54,7 +54,7 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
               ? gifDecodeLongEdgeForCount(nfts.length)
               : 1200,
     // Grid/GIF: try CDN first, then IPFS. Trait singles want the full-res path.
-    maxUrlAttempts: isTraitSingle ? 10 : isRarityGrid ? 4 : isTraitGrid ? 6 : isGrid || isGif ? 8 : 10,
+    maxUrlAttempts: isTraitSingle ? 10 : isRarityGrid ? 2 : isTraitGrid ? 6 : isGrid || isGif ? 8 : 10,
     preferCdn: isGrid || isGif || isTraitGrid || isRarityGrid,
     preferHighRes: isTraitSingle,
     fastImageFetch: isTraitGrid || isGif || isRarityGrid,
