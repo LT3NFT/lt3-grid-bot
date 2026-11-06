@@ -104,7 +104,7 @@ function reviewChatDraft(text, userText, { cap, greetedFirst, welcomeBack, recen
     return "You don't know that person. Say so and ask who they are. Don't invent anything.";
   }
   if (looksLikeInventedMarketClaim(text, userText)) {
-    return "You invented floor or market news. You do not have live stats here. Reply without any floor, listings, volume, owners, or ETH price claims.";
+    return "You invented collection or market news. You are not watching a live feed here. No fake listings, sales, floor moves, trait stories, or ETH numbers. Talk about your own work or just reply normally.";
   }
   if (looksLikeUnpromptedStatusFlattery(text, userText)) {
     return "Don't announce their title or that they run / rule the place. Talk like a normal friend. Especially on a plain hi, just say hi.";

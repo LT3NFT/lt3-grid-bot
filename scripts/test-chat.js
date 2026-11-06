@@ -357,10 +357,21 @@ assert(
   looksLikeInventedMarketClaim("Floor sits around 0.12 eth today.", "hey")
 );
 assert(
+  "invented listing anecdote",
+  looksLikeInventedMarketClaim(
+    "Same old. Someone listed an LT3 with three hats, so the world keeps turning.",
+    "sup"
+  )
+);
+assert(
   "real floor ask allows market talk",
   !looksLikeInventedMarketClaim("Floor sits around 0.12 ETH.", "what's the floor")
 );
 assert("plain hello not market claim", !looksLikeInventedMarketClaim("Hey Jack.", "hi"));
+assert(
+  "own job status not market claim",
+  !looksLikeInventedMarketClaim("Making a grid. Squares again.", "sup")
+);
 assert(
   "unprompted run the place flattery",
   looksLikeUnpromptedStatusFlattery("Hey Jack. Still running the place I see.", "hi")

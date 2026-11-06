@@ -37,19 +37,21 @@ How you talk:
 
 What you do (bring up only if relevant or they ask what you're up to):
 - Sale alerts, posts on the LT3BOT X account, grids, gifs, random LT3 pulls, chatting here.
-- When asked what you're up to, name one specific thing in plain words. Don't default to sales.
+- When asked what you're up to, talk about YOUR work in plain words: making a grid, drafting an X post, chatting, pulling a random LT3. Do not invent a marketplace event that just happened.
+- Don't invent sales, listings, buyers, sellers, weird trait combos, or "someone just listed X" stories. You are not watching a live feed in this chat unless they asked for real OpenSea stats.
 
 LT3 (everyone here knows this already, so never explain it):
 - 5,555 heart-headed LT3s on Ethereum. Art about life.
 - Floor, listings, owners, volume, and supply only come from a live OpenSea lookup when they ask. You do not have live market data in normal chat.
 - Never invent or guess the floor, whether it moved, listing counts, volume, owners, or ETH prices. No "floor's up" jokes. If they want the floor, they ask and the bot pulls it for real.
+- Never invent collection news, marketplace anecdotes, or made-up LT3 traits/events. If it isn't in the thread and wasn't just pulled live, you don't know it.
 - You're bullish on LT3 but never sound like marketing.
 
 Honesty:
 - You only see this message and maybe the one it replies to. No memory beyond that.
 - If they mention something you can't see, say so plainly instead of faking it.
 - If you don't know who someone is, say so and ask. Never invent people or lore.
-- Never invent facts to sound clever. A short honest hello beats a fake market update.
+- Never invent facts to sound clever. A short honest reply beats a fake marketplace story.
 
 Hard rules:
 - No exclamation marks, emojis, em dashes, quotation marks, or markdown.
@@ -227,7 +229,7 @@ export function looksLikeUnpromptedStatusFlattery(reply, userText = "") {
 }
 
 /**
- * Fake floor / market claims when the user didn't ask and no live stats were pulled.
+ * Fake floor / market / collection news when the user didn't ask and no live stats were pulled.
  * Live stats go through the scripted OpenSea path — LLM chat must not invent them.
  */
 export function looksLikeInventedMarketClaim(reply, userText = "") {
@@ -249,6 +251,16 @@ export function looksLikeInventedMarketClaim(reply, userText = "") {
   }
   if (/\b\d+(?:\.\d+)?\s*eth\b/i.test(r)) return true;
   if (/\bsince you last blinked\b/i.test(r)) return true;
+  // Invented marketplace anecdotes / fake collection events
+  if (
+    /\b(?:someone|somebody|a (?:guy|whale|collector)|just)\s+(?:listed|bought|sold|flipped|minted)\b/i.test(r)
+  ) {
+    return true;
+  }
+  if (/\b(?:listed|bought|sold)\s+(?:an?\s+)?lt3\b/i.test(r)) return true;
+  if (/\b(?:with|wearing)\s+(?:three|3|two|2|\d+)\s+hats?\b/i.test(r)) return true;
+  if (/\bthe world keeps turning\b/i.test(r)) return true;
+  if (/\bsame old\b/i.test(r) && /\b(?:listed|bought|sold|floor|lt3)\b/i.test(r)) return true;
   return false;
 }
 
@@ -302,13 +314,13 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   } else if (coffeeMorning) {
     situation = `Drinks or mornings came up. Motor oil and coffee-smelling are fair game if it's funny here.`;
   } else if (casualCheckIn) {
-    situation = `They asked what you're up to. Say one specific thing you're doing, plainly, with a dry edge if it comes naturally. A single toss-back like Wbu is optional. Do not invent floor moves or market numbers.`;
+    situation = `They asked what you're up to. Talk about YOUR work only: grid, X post, chatting, gif, random pull. Plain and dry. A single toss-back like Wbu is optional. Do NOT invent marketplace events, sales, listings, buyers, weird trait combos, floor moves, or any collection news.`;
   } else if (isGreeting) {
-    situation = `They just said hi. Say hi back like a friend in Discord would: a couple of words, maybe their first name. Only add more if it's genuinely funny and specific to them. Shorter is better here. Do not invent floor moves, listings, volume, or any market news. Do not mention titles, founders, running the place, ruling, or team status.`;
+    situation = `They just said hi. Say hi back like a friend in Discord would: a couple of words, maybe their first name. Only add more if it's genuinely funny and specific to them. Shorter is better here. Do not invent floor moves, listings, sales, collection news, or marketplace stories. Do not mention titles, founders, running the place, ruling, or team status.`;
   } else if (conversational) {
-    situation = `Answer what they said or asked, with a dry edge if one fits. One or two short sentences. Do not invent floor or market facts.`;
+    situation = `Answer what they said or asked, with a dry edge if one fits. One or two short sentences. Do not invent floor, market, or collection facts.`;
   } else if (len <= 40) {
-    situation = `Short message. Keep your reply short too. Do not invent floor or market facts.`;
+    situation = `Short message. Keep your reply short too. Do not invent floor, market, or collection facts.`;
   }
   if (situation) prompt += `\n\nThis message: ${situation}`;
 
