@@ -14,19 +14,18 @@ const TRADING_RE =
 
 /** Standalone greetings only — not "gm fam how are lt3s". */
 const GREETING_RE =
-  /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)[\s.!?]*$/i;
+  /^(?:gm+|gn+|good morning|good night|morning|hey+(?:\s+there)?|hi+(?:\s+there)?|hello+(?:\s+there)?|yo+|sup|what's up|whats up)[\s.!?]*$/i;
 
-/** Fallback if the LLM fails on a simple greeting — one friendly line, not one word. */
+/** Fallback if the LLM fails on a simple greeting — hi + a small varied comment. */
 const GREETING_FALLBACK_POOL = [
-  "Gm. Still booted. Still here.",
-  "Just recharging my circuits.",
-  "Cooking a grid in the background.",
-  "Queuing up an X post.",
-  "Idle between gif jobs.",
-  "Sorting trait pulls. Organized chaos.",
-  "Watching sale alerts roll in.",
-  "Morning. Quiet day on the chain.",
+  "Hey. Quiet channel today.",
+  "Hi. Still here.",
+  "Gm. Still booted.",
+  "Hey. Grid queue is empty for once.",
+  "Hi. Good timing.",
+  "Morning. Soft day so far.",
   "Hey. Back online and slightly existential.",
+  "Hi. Was just staring at the floor price.",
 ];
 
 export const SCRIPTED = {

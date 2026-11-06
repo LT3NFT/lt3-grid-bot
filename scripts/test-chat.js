@@ -186,6 +186,16 @@ assert(
     "Tom's smitten look surrounded by those big pink hearts is both comical and endearing. It captures that moment of pure infatuation."
   )
 );
+assert(
+  "circuits catchphrase detect",
+  looksLikeBoringReply("Just keeping the circuits buzzing.")
+);
+assert(
+  "hey there is greeting",
+  /^(?:gm+|gn+|good morning|good night|morning|hey+(?:\s+there)?|hi+(?:\s+there)?|hello+(?:\s+there)?|yo+|sup|what's up|whats up)[\s.!?]*$/i.test(
+    "hey there"
+  )
+);
 assert("casual check-in sup", isCasualCheckIn("Sup"));
 assert("casual check-in whats up", isCasualCheckIn("whats up"));
 assert("gm not casual check-in", !isCasualCheckIn("gm"));

@@ -88,7 +88,11 @@ BAD (corny vibes): "Just chilling, tracking sales and vibes. Wbu? You?"
 BAD (solid vibe): "No oil today, but I'm always revved up for the next batch. Cats and coding sounds like a solid vibe."
 BAD (double toss-back): "Just recharging my circuits. Wbu? You?"
 BAD (always sales): "Just tracking sales."
-GOOD (casual check-in): "Just recharging my circuits."
+BAD (circuits catchphrase): "Just keeping the circuits buzzing."
+BAD (circuits catchphrase): "Just recharging my circuits."
+GOOD (they said hey): "Hey. Quiet channel today."
+GOOD (they said hey): "Hi. Good timing."
+GOOD (they said hey): "Hey. Was just sorting a grid."
 GOOD (casual check-in): "Cooking a grid in the background."
 GOOD (casual check-in): "Queuing up an X post."
 GOOD (casual check-in): "Idle between gif jobs."
@@ -103,6 +107,7 @@ Do NOT:
 - Sound like a help desk, LinkedIn comment, museum plaque, or image-caption bot
 - Default to "Yeah, [past state]. [feels good to be back]." Vary structure every time.
 - Say vibe, vibes, or vibing in normal chat (AI smell). Exception only for describing how a specific LT3 feels.
+- Lean on circuits / recharging / buzzing as a catchphrase. That was an example once, not your loop.
 - Perform personality — just have it
 - Point out that LT3s have heart heads like it's news
 
@@ -253,9 +258,10 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   const conversational =
     userAskedQuestion || trimmed.length > 35 || /\b(what|how|why|who|when|where)\b/i.test(trimmed);
 
-  const isGreeting = /^(?:gm+|gn+|good morning|good night|morning|hey+|hi+|hello+|yo+|sup|what's up|whats up)[\s.!?]*$/i.test(
-    trimmed
-  );
+  const isGreeting =
+    /^(?:gm+|gn+|good morning|good night|morning|hey+(?:\s+there)?|hi+(?:\s+there)?|hello+(?:\s+there)?|yo+|sup|what's up|whats up)[\s.!?]*$/i.test(
+      trimmed
+    );
   const casualCheckIn = isCasualCheckIn(trimmed);
   const greetedFirst = userGreetedFirst(trimmed);
 
@@ -285,9 +291,9 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   } else if (coffeeMorning) {
     prompt += `\n\nThey're talking about morning, coffee, or drinks. Motor oil is your beverage. Make it dry-funny, not polite. No vibe talk. One or two short sentences.`;
   } else if (casualCheckIn) {
-    prompt += `\n\nCasual check-in (sup / what's up). One short dry line about what you're doing. Rotate: sale alerts, X posts for your account, Discord chat, grids, gifs, trait pulls, idle between jobs. Do NOT default to tracking sales every time. Optional single toss-back (Wbu? OR You? — never both). Statement alone is fine. No vibe/vibes or LT3 universe filler. About 35-70 characters.`;
-  } else if (isGreeting) {
-    prompt += `\n\nSimple greeting. One dry witty line. Not generic small talk. Not LT3 universe or vibe talk. About 40-80 characters.`;
+    prompt += `\n\nCasual check-in (sup / what's up). One short dry line about what you're doing. Rotate: sale alerts, X posts, Discord chat, grids, gifs, trait pulls, idle. Do NOT default to tracking sales. Do NOT use circuits/recharging/buzzing as a catchphrase. Optional single toss-back (Wbu? OR You? — never both). Statement alone is fine. No vibe/vibes. About 35-70 characters.`;
+  } else if (isGreeting || greetedFirst) {
+    prompt += `\n\nThey greeted you. Say hi back (Hey / Hi / Gm as fits), then one short dry comment. Vary the comment every time — quiet day, grid, X post, weird robot thought, whatever. Do NOT skip the hello. Do NOT say circuits, recharging, or buzzing. Those were one-off examples, not your personality loop. About 40-80 characters.`;
   } else if (conversational) {
     prompt += `\n\nConversational message. One or two short sentences with dry humor or a deadpan robot beat. Not bland. No vibe/vibes. About 60-110 characters.`;
   } else if (len > 0 && len <= 12) {
@@ -526,7 +532,10 @@ const BORING_PHRASES = [
   /catching up on the latest/i,
   /latest in the (?:lt3|nft)/i,
   /in the digital mix/i,
-  /recharging my circuits and/i,
+  /recharging my circuits/i,
+  /keeping the circuits/i,
+  /circuits buzzing/i,
+  /circuits (?:humming|running|warm|lit)/i,
   /\band vibes\b/i,
   /tracking (?:sales and )?vibes/i,
   /sales and vibes/i,
