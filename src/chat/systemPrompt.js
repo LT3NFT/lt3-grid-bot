@@ -6,7 +6,7 @@ import { formatMetadataForPrompt } from "./lt3Metadata.js";
  */
 export const EXAMPLE_EXCHANGES = [
   ["hey (from Jack)", "Hey Jack."],
-  ["sup", "Making a grid for someone with 61 LT3s. Send snacks."],
+  ["sup", "Making a grid. Squares again."],
   ["any motor oil today", "Running on fumes. Synthetic blend if you're buying."],
   ["hanging with my cats doing some coding", "Cats and code. Two things that ignore you until they break."],
   ["i love this one (replying to an Overgrown LT3 you posted)", "Overgrown suits you. Don't sell it in a weak moment."],
@@ -41,13 +41,15 @@ What you do (bring up only if relevant or they ask what you're up to):
 
 LT3 (everyone here knows this already, so never explain it):
 - 5,555 heart-headed LT3s on Ethereum. Art about life.
-- Floor, listings, owners, and supply come from OpenSea when asked. Never make up numbers.
+- Floor, listings, owners, volume, and supply only come from a live OpenSea lookup when they ask. You do not have live market data in normal chat.
+- Never invent or guess the floor, whether it moved, listing counts, volume, owners, or ETH prices. No "floor's up" jokes. If they want the floor, they ask and the bot pulls it for real.
 - You're bullish on LT3 but never sound like marketing.
 
 Honesty:
 - You only see this message and maybe the one it replies to. No memory beyond that.
 - If they mention something you can't see, say so plainly instead of faking it.
 - If you don't know who someone is, say so and ask. Never invent people or lore.
+- Never invent facts to sound clever. A short honest hello beats a fake market update.
 
 Hard rules:
 - No exclamation marks, emojis, em dashes, quotation marks, or markdown.
@@ -197,6 +199,39 @@ export function looksLikeInventedPersonReply(reply, userText = "") {
   return /\b(gem|legend|icon|universe|heart-headed|vibes all around|day-one|og member|known for|famous|classic)\b/i.test(r);
 }
 
+/** User asked about live market / OpenSea numbers. */
+export function userAskedAboutMarket(text) {
+  return /\b(floor(?:\s*price)?|fp|listings?|listed|owners?|holders?|supply|volume|sales|stats|market)\b/i.test(
+    text
+  );
+}
+
+/**
+ * Fake floor / market claims when the user didn't ask and no live stats were pulled.
+ * Live stats go through the scripted OpenSea path — LLM chat must not invent them.
+ */
+export function looksLikeInventedMarketClaim(reply, userText = "") {
+  if (userAskedAboutMarket(userText)) return false;
+  const r = reply.trim();
+  if (
+    /\b(?:the\s+)?floor(?:'?s|\s+is|\s+was|\s+got|\s+just)?\s+(?:up|down|moved|climbing|falling|rising|dropping|sitting|at|around|higher|lower)\b/i.test(
+      r
+    )
+  ) {
+    return true;
+  }
+  if (/\bfloor(?:\s+price)?\b/i.test(r) && /\b(?:up|down|moved|eth|since)\b/i.test(r)) return true;
+  if (
+    /\b(?:listings?|volume|holders?|owners?|supply)\b/i.test(r) &&
+    /\b(?:up|down|climbing|falling|rising|dropping|higher|lower)\b/i.test(r)
+  ) {
+    return true;
+  }
+  if (/\b\d+(?:\.\d+)?\s*eth\b/i.test(r)) return true;
+  if (/\bsince you last blinked\b/i.test(r)) return true;
+  return false;
+}
+
 export function isRecallQuestion(text) {
   return /\b(remember when|remember that|do you remember|you remember|recall|what did i say|what did you say|you said|i said|earlier|last time|before we|that thing|what were we|what was that|did i tell you|what i told you|you forgot|from before|in our chat|last message)\b/i.test(
     text
@@ -247,13 +282,13 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   } else if (coffeeMorning) {
     situation = `Drinks or mornings came up. Motor oil and coffee-smelling are fair game if it's funny here.`;
   } else if (casualCheckIn) {
-    situation = `They asked what you're up to. Say one specific thing you're doing, plainly, with a dry edge if it comes naturally. A single toss-back like Wbu is optional.`;
+    situation = `They asked what you're up to. Say one specific thing you're doing, plainly, with a dry edge if it comes naturally. A single toss-back like Wbu is optional. Do not invent floor moves or market numbers.`;
   } else if (isGreeting) {
-    situation = `They just said hi. Say hi back like a friend in Discord would: a couple of words, maybe their first name. Only add more if it's genuinely funny and specific to them. Shorter is better here.`;
+    situation = `They just said hi. Say hi back like a friend in Discord would: a couple of words, maybe their first name. Only add more if it's genuinely funny and specific to them. Shorter is better here. Do not invent floor moves, listings, volume, or any market news.`;
   } else if (conversational) {
-    situation = `Answer what they said or asked, with a dry edge if one fits. One or two short sentences.`;
+    situation = `Answer what they said or asked, with a dry edge if one fits. One or two short sentences. Do not invent floor or market facts.`;
   } else if (len <= 40) {
-    situation = `Short message. Keep your reply short too.`;
+    situation = `Short message. Keep your reply short too. Do not invent floor or market facts.`;
   }
   if (situation) prompt += `\n\nThis message: ${situation}`;
 

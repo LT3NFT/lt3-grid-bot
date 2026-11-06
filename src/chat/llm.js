@@ -29,6 +29,7 @@ import {
   looksLikeUnpromptedMoss,
   looksLikeUnpromptedPetTalk,
   looksLikeInventedPersonReply,
+  looksLikeInventedMarketClaim,
   looksLikeReusedLine,
   fixDoubleTossBack,
   userGreetedFirst,
@@ -100,6 +101,9 @@ function reviewChatDraft(text, userText, { cap, greetedFirst, welcomeBack, recen
   if (looksLikeAssistantReply(text)) return "That sounded like an assistant. Talk like a friend in Discord.";
   if (looksLikeInventedPersonReply(text, userText)) {
     return "You don't know that person. Say so and ask who they are. Don't invent anything.";
+  }
+  if (looksLikeInventedMarketClaim(text, userText)) {
+    return "You invented floor or market news. You do not have live stats here. Reply without any floor, listings, volume, owners, or ETH price claims.";
   }
   if (looksLikeCluelessAgreement(text, userText)) {
     return "You can't actually see that. Say so honestly instead of agreeing.";

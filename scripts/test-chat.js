@@ -40,6 +40,7 @@ import {
   looksLikeUnpromptedPetTalk,
   userMentionedPets,
   looksLikeReusedLine,
+  looksLikeInventedMarketClaim,
   buildChatSystemPrompt,
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
@@ -346,17 +347,31 @@ assert("trait single not plain chat", !isTraitSingleRequest("what do you think o
 
 assert("good timing hedge is filler", looksLikeBoringReply("Hello. Good timing, I guess."));
 assert("plain hello not filler", !looksLikeBoringReply("Hey Jack."));
+assert(
+  "invented floor claim on hi",
+  looksLikeInventedMarketClaim("Hey Jack. Floor's up since you last blinked.", "hi")
+);
+assert(
+  "invented floor eth claim",
+  looksLikeInventedMarketClaim("Floor sits around 0.12 eth today.", "hey")
+);
+assert(
+  "real floor ask allows market talk",
+  !looksLikeInventedMarketClaim("Floor sits around 0.12 ETH.", "what's the floor")
+);
+assert("plain hello not market claim", !looksLikeInventedMarketClaim("Hey Jack.", "hi"));
 assert("copied example caught", looksLikeReusedLine("Running on fumes today. Synthetic blend works."));
 assert(
   "repeat of own recent reply caught",
   looksLikeReusedLine("Building another grid for a whale.", ["Building another grid for someone."])
 );
-assert("fresh reply not flagged", !looksLikeReusedLine("Pulling up the floor. It's having a day.", ["Hey."]));
+assert("fresh reply not flagged", !looksLikeReusedLine("Drafting an X post. Be patient.", ["Hey."]));
 assert("short hi not flagged as reuse", !looksLikeReusedLine("Hey.", ["Hey."]));
 {
   const hiPrompt = buildChatSystemPrompt({ displayName: "Jack" }, "hi");
   assert("hi prompt has no good timing seed", !/good timing/i.test(hiPrompt));
   assert("hi prompt asks for short hello", /just said hi/i.test(hiPrompt));
+  assert("hi prompt bans invented floor", /do not invent floor/i.test(hiPrompt));
   const withRecent = buildChatSystemPrompt({ recentReplies: ["Making a grid."] }, "sup");
   assert("recent replies in prompt", withRecent.includes("- Making a grid."));
 }
