@@ -223,6 +223,10 @@ assert(
   !looksLikeBannedVibeTalk("Quiet piece. Hits soft.", { allowArtVibe: true })
 );
 assert("personal share cats", isPersonalShare("Just hanging with my cats doing some coding. Any motor oil today"));
+assert(
+  "bland polite detect",
+  looksLikeBoringReply("Cats and coding sounds nice. Hope you're having a good time.")
+);
 assert("affectionate love this", isAffectionateReaction("I love this one!"));
 assert("affectionate till i die", isAffectionateReaction("This one will hopefully stay with me till I die."));
 assert(

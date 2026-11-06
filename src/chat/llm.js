@@ -92,7 +92,8 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
   const welcomeBack = isWelcomeBackMessage(userText);
   const lighthearted = isLightheartedMessage(userText) || isAffectionateReaction(userText);
   const greetedFirst = userGreetedFirst(userText);
-  const temp = welcomeBack || lighthearted ? 0.95 : 0.88;
+  const personal = /\b(cats?|dogs?|pets?|coding|hanging with)\b/i.test(userText);
+  const temp = welcomeBack || lighthearted || personal ? 0.97 : 0.92;
   const replyContext = userContext?.replyContext ?? null;
 
   let text = await callModel(system, userText, { temperature: temp, replyContext });
@@ -131,14 +132,14 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       : looksLikeDoubleTossBack(text)
         ? "You stacked two toss-backs (like Wbu? You?). Pick ONE question max, or none. Statement alone is fine."
       : looksLikeBoringReply(text)
-        ? "Too ChatGPT / bland. Be clever and fun. Never say vibe/vibes. No LT3 universe, catching up on the latest, great pick, or therapist art talk. If they mentioned cats/pets/coding, react to that with robot self-awareness (no body)."
+        ? "Too bland. Add dry humor. Deadpan robot joke. Never say vibe/vibes. No LT3 universe, great pick, or polite filler. If they mentioned cats/pets/coding, lead with a no-body joke."
       : isGreeting
-        ? "Too generic or AI. One short casual line about what you're doing. Optional single toss-back, not required. Never say vibe/vibes or LT3 universe."
+        ? "Too bland. One short dry line. Optional single toss-back. Never say vibe/vibes or LT3 universe."
         : looksLikePoetrySpam(text)
-          ? "Too poetic. Dial it back — one plain-ish thought with a little robot flavor. Short."
+          ? "Too poetic. Dial it back — one dry thought with robot flavor. Short."
           : looksLikeRepetitiveComeback(text)
             ? "Comeback cliché. Skip the 'good to be back' script. Say something fresh and specific to their message."
-            : "Too generic or boring. Add dry humor or a clever riff. Still short. Not a poem.";
+            : "Too bland. Add dry humor or a deadpan riff. Still short. Not a poem.";
     text = await callModel(`${system}\n\n${hint}`, userText, { temperature: temp, replyContext });
   }
 
@@ -156,9 +157,9 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       (!greetedFirst && looksLikeUnpromptedGreeting(text)))
   ) {
     text = await callModel(
-      `${system}\n\nLast try: fun, specific, not a template. Match their energy without repeating your backstory.`,
+      `${system}\n\nLast try: dry humor, specific, not polite filler. Match their energy without repeating your backstory.`,
       userText,
-      { temperature: temp, replyContext }
+      { temperature: Math.min(temp + 0.03, 1), replyContext }
     );
   }
 
