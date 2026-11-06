@@ -112,6 +112,82 @@ export async function buildGridForTraitMatch(traitType, traitValue) {
   return { ...result, traitType, traitValue, count: TRAIT_GRID_SIZE };
 }
 
+/** Canonical LT3 art folder on IPFS (same CID OpenSea uses for original_image_url). */
+const LT3_IMAGE_IPFS_CID = "QmRYnu6yVbRPEk3yfkoQ11o1KAVjhxuP5FTs8gR58CE8nG";
+
+function nftStubFromTokenId(tokenId) {
+  const id = String(tokenId);
+  return {
+    tokenId: id,
+    identifier: id,
+    original_image_url: `ipfs://${LT3_IMAGE_IPFS_CID}/${id}.png`,
+    image_url: `https://alchemy.mypinata.cloud/ipfs/${LT3_IMAGE_IPFS_CID}/${id}.png`,
+    display_image_url: `https://lt3tools.com/tools/assets/lt3/${id}.jpg`,
+    contract: { address: "0x4ef6f6a7ee7d1cf7f1f7bfad2ba56baab868de48" },
+  };
+}
+
+function squareGridLayout(count) {
+  const edge = Math.round(Math.sqrt(count));
+  if (edge * edge !== count) return null;
+  return {
+    id: `grid-${edge}x${edge}-fixed`,
+    name: `${edge}x${edge}`,
+    aspectRatio: 1,
+    fit: "cover",
+    rects: Array.from({ length: count }, (_, index) => ({
+      x: (index % edge) / edge,
+      y: Math.floor(index / edge) / edge,
+      w: 1 / edge,
+      h: 1 / edge,
+      imageIndex: index,
+    })),
+  };
+}
+
+/**
+ * Build a grid from explicit LT3 token ids (e.g. top rarest).
+ * @param {Array<string|number>} tokenIds
+ * @param {{ label?: string, exportLongEdge?: number }} [options]
+ */
+export async function buildGridForTokenIds(tokenIds, options = {}) {
+  const ids = [...new Set(tokenIds.map((id) => String(id)).filter((id) => /^\d+$/.test(id)))];
+  if (!ids.length) throw new Error("No LT3 token ids to grid.");
+
+  const nfts = ids.map(nftStubFromTokenId);
+  const label = options.label || `token-grid-${ids.length}`;
+  const collection = await loadLt3CollectionFromNfts(nfts, "token-grid", label, {
+    purpose: "grid",
+  });
+
+  const fixed = squareGridLayout(collection.images.length);
+  if (fixed) {
+    const edge = options.exportLongEdge || Math.min(2400, Math.max(1200, collection.images.length * 120));
+    const rendered = await renderLayoutToBuffer(fixed, collection.images, edge, edge, {
+      preferJpeg: true,
+      jpegQuality: 88,
+    });
+    return {
+      address: collection.address,
+      display: collection.display,
+      count: collection.images.length,
+      layout: fixed,
+      width: edge,
+      height: edge,
+      tokenIds: ids,
+      ...rendered,
+      filename: `lt3-rarity-grid-${edge}x${edge}.${rendered.extension}`,
+    };
+  }
+
+  const result = await buildGridFromCollection(collection);
+  return {
+    ...result,
+    tokenIds: ids,
+    filename: `lt3-rarity-grid-${result.width}x${result.height}.${result.extension}`,
+  };
+}
+
 export async function buildSingleLt3ForTraitMatch(traitType, traitValue) {
   const nft = await pickRandomNftForTrait(traitType, traitValue);
   const tokenId = getNftTokenId(nft);

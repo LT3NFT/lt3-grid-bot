@@ -47,6 +47,7 @@ import {
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
 import { isTraitGridRequest, isTraitSingleRequest } from "../src/chat/traitGrid.js";
+import { isRarityGridRequest, parseRarityGridCount } from "../src/chat/rarityGrid.js";
 
 let failed = 0;
 
@@ -345,6 +346,16 @@ assert("trait single casual headwear", isTraitSingleRequest("show me ski headwea
 assert("trait single random phrasing", isTraitSingleRequest("random venus fly trap"));
 assert("trait single not grid plural", !isTraitSingleRequest("show me some LT3s with Venus Fly Trap"));
 assert("trait single not plain chat", !isTraitSingleRequest("what do you think of LT3 art"));
+
+assert(
+  "rarity grid top 25 sentence",
+  isRarityGridRequest("make me a grid of the top 25 rarest lt3s")
+);
+assert("rarity grid count 25", parseRarityGridCount("make me a grid of the top 25 rarest lt3s") === 25);
+assert("rarity grid rarest 9", isRarityGridRequest("grid of the rarest 9") && parseRarityGridCount("grid of the rarest 9") === 9);
+assert("rarity grid default count", parseRarityGridCount("show me a rarest lt3s grid") === 25);
+assert("rarity grid not floor ask", !isRarityGridRequest("what's the floor"));
+assert("rarity grid not single rarity breakdown", !isRarityGridRequest("/rarity 4449"));
 
 assert("good timing hedge is filler", looksLikeBoringReply("Hello. Good timing, I guess."));
 assert("plain hello not filler", !looksLikeBoringReply("Hey Jack."));

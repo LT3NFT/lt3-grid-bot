@@ -7,6 +7,7 @@ import {
 import { buildChatReply } from "./respond.js";
 import { fetchReplyThreadContext } from "./replyContext.js";
 import { buildTraitGridReplyQueued, buildTraitSingleReplyQueued, isTraitGridRequest, isTraitSingleRequest } from "./traitGrid.js";
+import { buildRarityGridReplyQueued, isRarityGridRequest } from "./rarityGrid.js";
 import { getImageUrlsFromMessage } from "./messageImages.js";
 import { getRecentReplies, recordReply } from "./recentReplies.js";
 import {
@@ -111,6 +112,14 @@ async function handleChatMessage(message, client) {
 
     if (imageUrls.length === 0) {
       try {
+        if (isRarityGridRequest(cleanText)) {
+          const rarityReply = await buildRarityGridReplyQueued(cleanText);
+          if (rarityReply) {
+            await message.reply({ content: rarityReply.caption, files: [rarityReply.attachment] });
+            return;
+          }
+        }
+
         if (isTraitGridRequest(cleanText)) {
           const gridReply = await buildTraitGridReplyQueued(cleanText);
           if (gridReply) {
@@ -127,7 +136,7 @@ async function handleChatMessage(message, client) {
           }
         }
       } catch (err) {
-        console.error("[Chat] trait pull failed", err);
+        console.error("[Chat] trait/rarity grid failed", err);
         const msg =
           err instanceof Error && err.message ? err.message : "Could not pull that LT3.";
         await message.reply(msg);
