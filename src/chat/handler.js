@@ -8,6 +8,7 @@ import { buildChatReply } from "./respond.js";
 import { fetchReplyThreadContext } from "./replyContext.js";
 import { buildTraitGridReplyQueued, buildTraitSingleReplyQueued, isTraitGridRequest, isTraitSingleRequest } from "./traitGrid.js";
 import { getImageUrlsFromMessage } from "./messageImages.js";
+import { getRecentReplies, recordReply } from "./recentReplies.js";
 import {
   isCearUser,
   isBarryUser,
@@ -148,8 +149,10 @@ async function handleChatMessage(message, client) {
       shgNickname,
       imageUrls,
       replyContext,
+      recentReplies: getRecentReplies(message.channelId),
     });
     await message.reply(reply);
+    recordReply(message.channelId, reply);
   } catch (err) {
     console.error("[Chat] reply failed", err);
   } finally {

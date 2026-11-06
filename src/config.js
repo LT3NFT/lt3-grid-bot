@@ -117,10 +117,10 @@ export const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || "").trim();
 export const CHAT_ENABLED =
   String(process.env.CHAT_ENABLED || "").trim() !== "false" && Boolean(OPENAI_API_KEY);
 export const CHAT_MAX_CHARS = Number(process.env.CHAT_MAX_CHARS) || 100;
-export const CHAT_LLM_MODEL = String(process.env.CHAT_LLM_MODEL || "gpt-4o-mini").trim();
+export const CHAT_LLM_MODEL = String(process.env.CHAT_LLM_MODEL || "gpt-4.1").trim();
 export const CHAT_LLM_TIMEOUT_MS = Number(process.env.CHAT_LLM_TIMEOUT_MS) || 12_000;
 export const CHAT_VISION_MODEL = String(
-  process.env.CHAT_VISION_MODEL || process.env.CHAT_LLM_MODEL || "gpt-4o-mini"
+  process.env.CHAT_VISION_MODEL || process.env.CHAT_LLM_MODEL || "gpt-4.1"
 ).trim();
 export const CHAT_VISION_MAX_CHARS = Number(process.env.CHAT_VISION_MAX_CHARS) || 220;
 export const CHAT_VISION_MAX_TOKENS = Number(process.env.CHAT_VISION_MAX_TOKENS) || 150;

@@ -29,6 +29,7 @@ import {
   looksLikeUnpromptedMoss,
   looksLikeUnpromptedPetTalk,
   looksLikeInventedPersonReply,
+  looksLikeReusedLine,
   fixDoubleTossBack,
   userGreetedFirst,
 } from "./systemPrompt.js";
@@ -67,8 +68,7 @@ async function callModel(system, userText, { temperature = 0.88, replyContext = 
 
   messages.push({ role: "user", content: userText.slice(0, 500) });
 
-  const completion = await openai.chat.completions.create({
-    model: CHAT_LLM_MODEL,
+  const completion = await createCompletion(openai, CHAT_LLM_MODEL, {
     temperature,
     max_tokens: 80,
     messages,
@@ -77,98 +77,89 @@ async function callModel(system, userText, { temperature = 0.88, replyContext = 
   return completion.choices?.[0]?.message?.content?.trim() || null;
 }
 
-/**
- * @param {string} userText
- * @param {{ username?: string, displayName?: string, isCear?: boolean }} [userContext]
- * @returns {Promise<string|null>}
- */
-function looksTooShort(text) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  return words.length <= 2 || text.trim().length < 25;
+const FALLBACK_MODEL = "gpt-4o-mini";
+const unavailableModels = new Set();
+
+/** Use the configured model, dropping to gpt-4o-mini if the account can't use it. */
+async function createCompletion(openai, model, params) {
+  const useModel = unavailableModels.has(model) ? FALLBACK_MODEL : model;
+  try {
+    return await openai.chat.completions.create({ model: useModel, ...params });
+  } catch (err) {
+    const status = err?.status;
+    const missingModel = status === 404 || (status === 400 && /model/i.test(String(err?.message)));
+    if (useModel === FALLBACK_MODEL || !missingModel) throw err;
+    console.warn(`[Chat] model ${useModel} unavailable, falling back to ${FALLBACK_MODEL}`);
+    unavailableModels.add(useModel);
+    return openai.chat.completions.create({ model: FALLBACK_MODEL, ...params });
+  }
 }
 
+/** First problem found with a draft reply, as a retry hint. Null when the draft is fine. */
+function reviewChatDraft(text, userText, { cap, greetedFirst, welcomeBack, recentReplies }) {
+  if (looksLikeAssistantReply(text)) return "That sounded like an assistant. Talk like a friend in Discord.";
+  if (looksLikeInventedPersonReply(text, userText)) {
+    return "You don't know that person. Say so and ask who they are. Don't invent anything.";
+  }
+  if (looksLikeCluelessAgreement(text, userText)) {
+    return "You can't actually see that. Say so honestly instead of agreeing.";
+  }
+  if (looksLikeUnpromptedMoss(text, userText) || looksLikeUnpromptedPetTalk(text, userText)) {
+    return "They didn't bring up moss, cats, or pets. Leave those out.";
+  }
+  if (!greetedFirst && looksLikeUnpromptedGreeting(text)) {
+    return "They didn't greet you. Skip the hello and respond to what they said.";
+  }
+  if (looksLikeReusedLine(text, recentReplies)) {
+    return "That reused a stock line or something you already said. Say it fresh, specific to this message.";
+  }
+  if (welcomeBack && looksLikeRepetitiveComeback(text)) {
+    return "Skip the comeback story. React to what they actually said.";
+  }
+  if (looksLikeBoringReply(text) || looksLikePoetrySpam(text) || looksLikeRepetitiveComeback(text)) {
+    return "That was filler. Say something specific to their message, dry and plain. If nothing funny fits, just be direct.";
+  }
+  if (looksLikeDoubleTossBack(text)) return "One question back at most, or none.";
+  if (looksCutOff(text) || text.length > cap + 15) {
+    return `Shorter. One complete sentence or two, under ${cap} characters.`;
+  }
+  return null;
+}
+
+/**
+ * @param {string} userText
+ * @param {object} [userContext]
+ * @param {{ isGreeting?: boolean }} [options]
+ * @returns {Promise<string|null>}
+ */
 export async function generateChatReply(userText, userContext, { isGreeting = false } = {}) {
   const system = buildChatSystemPrompt(userContext, userText);
   const cap = maxCharsForInput(userText, { isGreeting });
-  const welcomeBack = isWelcomeBackMessage(userText);
-  const lighthearted = isLightheartedMessage(userText) || isAffectionateReaction(userText);
-  const greetedFirst = userGreetedFirst(userText);
-  const personal = /\b(cats?|dogs?|pets?|coding|hanging with)\b/i.test(userText);
-  const temp = welcomeBack || lighthearted || personal ? 0.97 : 0.92;
   const replyContext = userContext?.replyContext ?? null;
+  const review = {
+    cap,
+    greetedFirst: userGreetedFirst(userText),
+    welcomeBack: isWelcomeBackMessage(userText),
+    recentReplies: userContext?.recentReplies ?? [],
+  };
+  const playful = review.welcomeBack || isLightheartedMessage(userText) || isAffectionateReaction(userText);
+  const temperature = playful ? 0.95 : 0.9;
 
-  let text = await callModel(system, userText, { temperature: temp, replyContext });
-
-  if (text && looksLikeDoubleTossBack(text)) {
-    text = fixDoubleTossBack(text);
+  let text = await callModel(system, userText, { temperature, replyContext });
+  for (let attempt = 0; text && attempt < 2; attempt++) {
+    if (looksLikeDoubleTossBack(text)) text = fixDoubleTossBack(text);
+    const hint = reviewChatDraft(text, userText, review);
+    if (!hint) break;
+    const retry = await callModel(`${system}\n\nYour draft was: ${text}\n${hint}`, userText, {
+      temperature,
+      replyContext,
+    });
+    if (!retry) break;
+    text = retry;
   }
 
-  if (
-    text &&
-    (looksLikeAssistantReply(text) ||
-      looksLikeBoringReply(text) ||
-      looksLikeDoubleTossBack(text) ||
-      looksLikeCluelessAgreement(text, userText) ||
-      looksLikeRepetitiveComeback(text) ||
-      looksLikePoetrySpam(text) ||
-      looksLikeUnpromptedMoss(text, userText) ||
-      looksLikeUnpromptedPetTalk(text, userText) ||
-      looksLikeInventedPersonReply(text, userText) ||
-      (!greetedFirst && looksLikeUnpromptedGreeting(text)) ||
-      looksCutOff(text) ||
-      (isGreeting && looksTooShort(text)) ||
-      text.length > cap + 15)
-  ) {
-    const hint = looksLikeInventedPersonReply(text, userText)
-      ? "You do not know that person. Say you do not know who they mean and ask for context. Do not invent lore."
-      : looksLikeUnpromptedMoss(text, userText)
-        ? "Do not mention moss unless they brought it up. Reply again without moss."
-      : looksLikeUnpromptedPetTalk(text, userText)
-        ? "Do not mention cats or pets unless they did. Reply again with zero cats."
-      : looksLikeCluelessAgreement(text, userText)
-      ? "You don't have memory and can't know that. Be honest — say you don't remember or only see this message. No fake yeah."
-      : looksCutOff(text)
-      ? `Reply got cut off. One or two COMPLETE sentences under ${cap} characters. End on a period.`
-      : !greetedFirst && looksLikeUnpromptedGreeting(text)
-      ? "You opened with a greeting but they didn't say hello. Drop the hey/hi/hello and respond to what they said."
-      : welcomeBack
-      ? "Too repetitive or generic. They already know you're back. React to what THEY said — dry joke, playful, warm weirdness. No 'feels good to be back' or 'was dark' lines."
-      : looksLikeDoubleTossBack(text)
-        ? "You stacked two toss-backs (like Wbu? You?). Pick ONE question max, or none. Statement alone is fine."
-      : looksLikeBoringReply(text)
-        ? "Too bland. Add dry humor. Deadpan robot joke. Never say vibe/vibes. No LT3 universe, great pick, or polite filler. If they mentioned cats/pets/coding, lead with a no-body joke."
-      : isGreeting || greetedFirst
-        ? "They only said hi. Say hi back. Tiny comment max. No quiet day / quiet in here. No job status, roulette, circuits, cats, or vibe talk."
-        : looksLikePoetrySpam(text)
-          ? "Too poetic. Dial it back — one dry thought with robot flavor. Short."
-          : looksLikeRepetitiveComeback(text)
-            ? "Comeback cliché. Skip the 'good to be back' script. Say something fresh and specific to their message."
-            : "Too bland. Add dry humor or a deadpan riff. Still short. Not a poem.";
-    text = await callModel(`${system}\n\n${hint}`, userText, { temperature: temp, replyContext });
-  }
-
-  if (text && looksLikeDoubleTossBack(text)) {
-    text = fixDoubleTossBack(text);
-  }
-
-  if (
-    text &&
-    (looksLikeAssistantReply(text) ||
-      looksLikeBoringReply(text) ||
-      looksLikeCluelessAgreement(text, userText) ||
-      looksLikeInventedPersonReply(text, userText) ||
-      (welcomeBack && looksLikeRepetitiveComeback(text)) ||
-      (!greetedFirst && looksLikeUnpromptedGreeting(text)))
-  ) {
-    text = await callModel(
-      `${system}\n\nLast try: dry humor, specific, not polite filler. Match their energy without repeating your backstory.`,
-      userText,
-      { temperature: Math.min(temp + 0.03, 1), replyContext }
-    );
-  }
-
+  if (text && looksLikeDoubleTossBack(text)) text = fixDoubleTossBack(text);
   if (text && looksLikeAssistantReply(text)) text = ASSISTANT_FALLBACK;
-
   return text;
 }
 
@@ -212,8 +203,7 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
   }
   messages.push({ role: "user", content });
 
-  const completion = await openai.chat.completions.create({
-    model: CHAT_VISION_MODEL,
+  const completion = await createCompletion(openai, CHAT_VISION_MODEL, {
     temperature: reactionMode ? 0.95 : 0.9,
     max_tokens: reactionMode ? Math.min(CHAT_VISION_MAX_TOKENS, 90) : CHAT_VISION_MAX_TOKENS,
     messages,
@@ -229,10 +219,11 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
       looksLikePoetrySpam(text) ||
       (!reactionMode && looksLikeLiteralArtDescription(text)) ||
       looksCutOff(text) ||
+      (reactionMode && looksLikeReusedLine(text, userContext?.recentReplies ?? [])) ||
       text.length > cap + 30)
   ) {
     const hint = reactionMode
-      ? "Too caption-bot / ChatGPT. Do not narrate the gif. Tie it to the LT3 or vibe in the thread with one clever dry line. Fun, short."
+      ? "Don't describe the gif. Reply to the feeling behind it and tie it to what's in the thread. One dry, fun line."
       : looksLikeLiteralArtDescription(text)
         ? "Too much catalog description. They want YOUR take. One quick detail nod, then your interpretation. Avoid 'features a' and 'accented by'."
         : looksLikeBoringReply(text, { allowArtVibe: true }) || looksLikeCaptionBotReply(text)
@@ -242,8 +233,7 @@ export async function generateVisionReply(userText, userContext, { imageUrls = [
             : looksCutOff(text)
               ? `Reply got cut off. Finish the thought. Under ${cap} characters.`
               : "Too generic. Specific, funny or dry-warm. Not NPC praise.";
-    const retry = await openai.chat.completions.create({
-      model: CHAT_VISION_MODEL,
+    const retry = await createCompletion(openai, CHAT_VISION_MODEL, {
       temperature: 0.92,
       max_tokens: reactionMode ? Math.min(CHAT_VISION_MAX_TOKENS, 90) : CHAT_VISION_MAX_TOKENS,
       messages: [

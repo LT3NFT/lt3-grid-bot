@@ -39,6 +39,8 @@ import {
   looksLikeUnpromptedMoss,
   looksLikeUnpromptedPetTalk,
   userMentionedPets,
+  looksLikeReusedLine,
+  buildChatSystemPrompt,
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
@@ -341,6 +343,23 @@ assert("trait single casual headwear", isTraitSingleRequest("show me ski headwea
 assert("trait single random phrasing", isTraitSingleRequest("random venus fly trap"));
 assert("trait single not grid plural", !isTraitSingleRequest("show me some LT3s with Venus Fly Trap"));
 assert("trait single not plain chat", !isTraitSingleRequest("what do you think of LT3 art"));
+
+assert("good timing hedge is filler", looksLikeBoringReply("Hello. Good timing, I guess."));
+assert("plain hello not filler", !looksLikeBoringReply("Hey Jack."));
+assert("copied example caught", looksLikeReusedLine("Running on fumes today. Synthetic blend works."));
+assert(
+  "repeat of own recent reply caught",
+  looksLikeReusedLine("Building another grid for a whale.", ["Building another grid for someone."])
+);
+assert("fresh reply not flagged", !looksLikeReusedLine("Pulling up the floor. It's having a day.", ["Hey."]));
+assert("short hi not flagged as reuse", !looksLikeReusedLine("Hey.", ["Hey."]));
+{
+  const hiPrompt = buildChatSystemPrompt({ displayName: "Jack" }, "hi");
+  assert("hi prompt has no good timing seed", !/good timing/i.test(hiPrompt));
+  assert("hi prompt asks for short hello", /just said hi/i.test(hiPrompt));
+  const withRecent = buildChatSystemPrompt({ recentReplies: ["Making a grid."] }, "sup");
+  assert("recent replies in prompt", withRecent.includes("- Making a grid."));
+}
 
 if (failed) {
   console.error(`\n${failed} test(s) failed`);
