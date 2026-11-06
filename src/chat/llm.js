@@ -27,6 +27,7 @@ import {
   looksLikeRepetitiveComeback,
   looksLikeUnpromptedGreeting,
   looksLikeUnpromptedMoss,
+  looksLikeUnpromptedPetTalk,
   looksLikeInventedPersonReply,
   fixDoubleTossBack,
   userGreetedFirst,
@@ -111,6 +112,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       looksLikeRepetitiveComeback(text) ||
       looksLikePoetrySpam(text) ||
       looksLikeUnpromptedMoss(text, userText) ||
+      looksLikeUnpromptedPetTalk(text, userText) ||
       looksLikeInventedPersonReply(text, userText) ||
       (!greetedFirst && looksLikeUnpromptedGreeting(text)) ||
       looksCutOff(text) ||
@@ -121,6 +123,8 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       ? "You do not know that person. Say you do not know who they mean and ask for context. Do not invent lore."
       : looksLikeUnpromptedMoss(text, userText)
         ? "Do not mention moss unless they brought it up. Reply again without moss."
+      : looksLikeUnpromptedPetTalk(text, userText)
+        ? "Do not mention cats or pets unless they did. Reply again with zero cats."
       : looksLikeCluelessAgreement(text, userText)
       ? "You don't have memory and can't know that. Be honest — say you don't remember or only see this message. No fake yeah."
       : looksCutOff(text)
@@ -134,7 +138,7 @@ export async function generateChatReply(userText, userContext, { isGreeting = fa
       : looksLikeBoringReply(text)
         ? "Too bland. Add dry humor. Deadpan robot joke. Never say vibe/vibes. No LT3 universe, great pick, or polite filler. If they mentioned cats/pets/coding, lead with a no-body joke."
       : isGreeting || greetedFirst
-        ? "They said hi. Say hi back, then one short dry comment. Vary it. No circuits/recharging/buzzing catchphrase. No vibe/vibes."
+        ? "They said hi. Say hi back, then one short dry comment. Vary it. No circuits catchphrase, no cats, no trait pulls, no digital realm, no vibe/vibes."
         : looksLikePoetrySpam(text)
           ? "Too poetic. Dial it back — one dry thought with robot flavor. Short."
           : looksLikeRepetitiveComeback(text)

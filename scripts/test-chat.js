@@ -37,6 +37,8 @@ import {
   isPersonNameQuestion,
   looksLikeInventedPersonReply,
   looksLikeUnpromptedMoss,
+  looksLikeUnpromptedPetTalk,
+  userMentionedPets,
 } from "../src/chat/systemPrompt.js";
 import { sanitizeChatReply, trimToCompleteThought, looksCutOff } from "../src/chat/sanitize.js";
 import { matchScriptedTrigger, SCRIPTED } from "../src/chat/triggers.js";
@@ -189,6 +191,26 @@ assert(
 assert(
   "circuits catchphrase detect",
   looksLikeBoringReply("Just keeping the circuits buzzing.")
+);
+assert(
+  "unprompted cat detect",
+  looksLikeUnpromptedPetTalk(
+    "Just another day in the digital realm. If only I had a cat to keep me company.",
+    "hey there"
+  )
+);
+assert(
+  "prompted cat ok",
+  !looksLikeUnpromptedPetTalk("Wish I could have a cat. No body.", "hanging with my cats")
+);
+assert("user mentioned pets", userMentionedPets("my cats are loud"));
+assert(
+  "trait pulls jargon detect",
+  looksLikeBoringReply("Just sorting through trait pulls. Always a surprise in there. You?")
+);
+assert(
+  "digital realm detect",
+  looksLikeBoringReply("Just another day in the digital realm.")
 );
 assert(
   "hey there is greeting",
