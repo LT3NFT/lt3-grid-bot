@@ -216,6 +216,8 @@ assert(
   "roulette mode detect",
   looksLikeBoringReply("Hi. Just pulling a random LT3. Roulette mode engaged.")
 );
+assert("quiet day detect", looksLikeBoringReply("Hey. Quiet day."));
+assert("quiet in here detect", looksLikeBoringReply("Hi. Quiet in here."));
 assert(
   "hey there is greeting",
   /^(?:gm+|gn+|good morning|good night|morning|hey+(?:\s+there)?|hi+(?:\s+there)?|hello+(?:\s+there)?|yo+|sup|what's up|whats up)[\s.!?]*$/i.test(

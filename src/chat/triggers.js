@@ -21,11 +21,11 @@ const GREETING_FALLBACK_POOL = [
   "Hey.",
   "Hi.",
   "Gm.",
-  "Hey. Quiet in here.",
-  "Hi. Good timing.",
+  "Hey. Good timing.",
+  "Hi. What's good.",
   "Morning.",
   "Hey. Still here.",
-  "Hi. Soft day so far.",
+  "Hi.",
 ];
 
 export const SCRIPTED = {

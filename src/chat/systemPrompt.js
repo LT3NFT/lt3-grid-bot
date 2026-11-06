@@ -92,8 +92,10 @@ BAD (unprompted cat): "Just another day in the digital realm. If only I had a ca
 BAD (jargon status): "Just sorting through trait pulls. Always a surprise in there."
 BAD (digital realm): "Just another day in the digital realm."
 GOOD (they said hi): "Hey."
-GOOD (they said hi): "Hi. Quiet in here."
+GOOD (they said hi): "Hi."
 GOOD (they said hi): "Hey. Good timing."
+BAD (quiet day loop): "Hey. Quiet day."
+BAD (quiet day loop): "Hi. Quiet in here."
 BAD (job status on hi): "Hi. Just pulling a random LT3. Roulette mode engaged."
 BAD (corny mode): "Roulette mode engaged."
 GOOD (only if they asked what's up): "Cooking a grid in the background."
@@ -308,7 +310,7 @@ export function buildChatSystemPrompt(userContext, userText = "") {
   } else if (casualCheckIn) {
     prompt += `\n\nCasual check-in (sup / what's up / wyd). They asked what you're up to. One short dry line. Keep it plain and understated. No "mode engaged", no trait pulls, no circuits catchphrase, no cats. Optional single toss-back. About 35-70 characters.`;
   } else if (isGreeting || greetedFirst) {
-    prompt += `\n\nThey only said hi/hey/gm. Reply with a hello back, optionally one tiny understated comment (quiet day, good timing). Do NOT narrate what you're working on. Do NOT invent a job status (no pulling LT3s, grids, X posts, roulette, sales). Do NOT say mode engaged. Keep it short. About 15-50 characters.`;
+    prompt += `\n\nThey only said hi/hey/gm. Reply with a hello back, optionally one tiny understated comment (good timing, still here). Do NOT say quiet day / quiet channel / quiet in here. Do NOT narrate what you're working on or invent a job status. Do NOT say mode engaged. Keep it short. About 15-50 characters.`;
   } else if (conversational) {
     prompt += `\n\nConversational message. One or two short sentences with dry humor or a deadpan robot beat. Not bland. No vibe/vibes. About 60-110 characters.`;
   } else if (len > 0 && len <= 12) {
@@ -560,6 +562,9 @@ const BORING_PHRASES = [
   /roulette mode/i,
   /mode engaged/i,
   /just pulling a random lt3/i,
+  /quiet day/i,
+  /quiet (?:in here|channel|server|chat)/i,
+  /soft day so far/i,
   /if only i had a cat/i,
   /cat to keep me company/i,
   /\band vibes\b/i,
