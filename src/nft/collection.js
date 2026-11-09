@@ -11,6 +11,7 @@ import {
 } from "../config.js";
 import { fetchAllLt3NftsForOwner } from "./fetch.js";
 import { loadNftImages } from "./load-images.js";
+import { withCanonicalLt3ImageUrls } from "./lt3Art.js";
 import { resolveWalletInput } from "../util/wallet-resolve.js";
 
 function validateNftCount(nfts, display) {
@@ -32,7 +33,11 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
   const isTraitGrid = options.purpose === "trait-grid";
   const isTraitSingle = options.purpose === "trait-single";
   const isRarityGrid = options.purpose === "rarity-grid";
-  const images = await loadNftImages(nfts, {
+  // Wallet / trait / rarity grids: hit canonical Pinata art first (skip broken CDN chains).
+  const sourceNfts =
+    isTraitSingle ? nfts : withCanonicalLt3ImageUrls(nfts);
+  const t0 = Date.now();
+  const images = await loadNftImages(sourceNfts, {
     concurrency: isRarityGrid
       ? Math.min(25, Math.max(12, nfts.length))
       : isTraitGrid
@@ -53,16 +58,19 @@ export async function loadLt3CollectionFromNfts(nfts, address, display, options 
             : isGif
               ? gifDecodeLongEdgeForCount(nfts.length)
               : 1200,
-    // Grid/GIF: try CDN first, then IPFS. Trait singles want the full-res path.
-    maxUrlAttempts: isTraitSingle ? 10 : isRarityGrid ? 2 : isTraitGrid ? 6 : isGrid || isGif ? 8 : 10,
+    // Pinata-first: few attempts + fast timeouts. Trait singles still explore high-res paths.
+    maxUrlAttempts: isTraitSingle ? 10 : isRarityGrid ? 2 : isTraitGrid ? 4 : isGrid || isGif ? 3 : 6,
     preferCdn: isGrid || isGif || isTraitGrid || isRarityGrid,
     preferHighRes: isTraitSingle,
-    fastImageFetch: isTraitGrid || isGif || isRarityGrid,
+    fastImageFetch: isGrid || isTraitGrid || isGif || isRarityGrid,
     jpegQuality: isTraitSingle ? TRAIT_SINGLE_JPEG_QUALITY : 88,
     highQuality: isTraitSingle,
     minSourceEdge: isTraitSingle ? 900 : 0,
     preferAlchemyFirst: isTraitSingle,
   });
+  console.log(
+    `[collection] ${display}: loaded ${images.length}/${nfts.length} images in ${((Date.now() - t0) / 1000).toFixed(1)}s (${options.purpose || "grid"})`
+  );
 
   if (!images.length) {
     throw new Error(`Could not load any LT3 images for ${display}.`);

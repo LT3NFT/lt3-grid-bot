@@ -10,6 +10,7 @@ import { getExportDimensionsForLayout } from "./layout/dimensions.js";
 import { pickBestLayout } from "./layout/rank.js";
 import { renderLayoutToBuffer } from "./render/composite.js";
 import { resolveWalletInput, withTimeout } from "./util/wallet-resolve.js";
+import { withCanonicalLt3ImageUrls } from "./nft/lt3Art.js";
 
 const TRAIT_GRID_3X3_LAYOUT = {
   id: "grid-3x3-trait",
@@ -112,22 +113,15 @@ export async function buildGridForTraitMatch(traitType, traitValue) {
   return { ...result, traitType, traitValue, count: TRAIT_GRID_SIZE };
 }
 
-/** Canonical LT3 art folder — direct Pinata HTTPS (no per-token OpenSea round trips). */
-const LT3_IMAGE_IPFS_CID = "QmRYnu6yVbRPEk3yfkoQ11o1KAVjhxuP5FTs8gR58CE8nG";
-const LT3_PINATA_GATEWAY = `https://alchemy.mypinata.cloud/ipfs/${LT3_IMAGE_IPFS_CID}`;
-const LT3_DWEB_GATEWAY = `https://dweb.link/ipfs/${LT3_IMAGE_IPFS_CID}`;
-
 function nftStubFromTokenId(tokenId) {
   const id = String(tokenId);
-  return {
-    tokenId: id,
-    identifier: id,
-    image_url: `${LT3_PINATA_GATEWAY}/${id}.png`,
-    display_image_url: `${LT3_PINATA_GATEWAY}/${id}.png`,
-    // Second gateway only if Pinata flakes — kept on original_image_url for fallback.
-    original_image_url: `${LT3_DWEB_GATEWAY}/${id}.png`,
-    contract: { address: LT3_CONTRACT_LC },
-  };
+  return withCanonicalLt3ImageUrls([
+    {
+      tokenId: id,
+      identifier: id,
+      contract: { address: LT3_CONTRACT_LC },
+    },
+  ])[0];
 }
 
 function squareGridLayout(count) {

@@ -11,9 +11,12 @@ async function fetchLt3NftsPage(ownerAddress, pageKey) {
   );
   url.searchParams.set("owner", ownerAddress);
   url.searchParams.append("contractAddresses[]", LT3_CONTRACT_LC);
+  // Token ids only — images come from canonical Pinata URLs, not Alchemy media.
+  url.searchParams.set("withMetadata", "false");
+  url.searchParams.set("pageSize", "100");
   if (pageKey) url.searchParams.set("pageKey", pageKey);
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(30_000) });
   if (!res.ok) {
     let detail = "";
     try {

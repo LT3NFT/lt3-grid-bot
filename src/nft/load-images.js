@@ -28,10 +28,14 @@ function rankImageUrls(urls) {
   function score(url) {
     try {
       const host = new URL(url).hostname.toLowerCase();
-      if (host.includes("nft2-cdn.alchemy.com")) return 0;
+      // Canonical LT3 Pinata folder first — reliable + fast for grids.
+      if (host === "alchemy.mypinata.cloud" && url.includes("/ipfs/QmRYnu6yVbRPEk3yfkoQ11o1KAVjhxuP5FTs8gR58CE8nG/")) {
+        return 0;
+      }
       if (host === "alchemy.mypinata.cloud") return 1;
-      if (host.includes("cloudinary.com") && url.includes("convert-png")) return 2;
-      if (host.includes("cloudinary.com")) return 3;
+      if (host.includes("nft2-cdn.alchemy.com")) return 2;
+      if (host.includes("cloudinary.com") && url.includes("convert-png")) return 3;
+      if (host.includes("cloudinary.com")) return 4;
       if (host.includes("pinata")) return 5;
       if (host === "dweb.link") return 6;
       if (host === "ipfs.io") return 7;
