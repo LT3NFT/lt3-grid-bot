@@ -1,10 +1,13 @@
 import { AttachmentBuilder, ApplicationCommandOptionType, MessageFlags } from "discord.js";
-import { DISCORD_GRID_CHANNEL_ID, GRID_COOLDOWN_MS, RARITY_TIMEOUT_MS } from "../config.js";
-import { parseRarityTokenId } from "../render/rarity-video.js";
+import { DISCORD_GRID_CHANNEL_ID, GRID_COOLDOWN_MS } from "../config.js";
+import {
+  buildRarityVideoWithTimeout,
+  friendlyRarityError,
+  parseRarityTokenId,
+} from "../render/rarity-video.js";
 import { pickRarityMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runGifJob } from "../util/heavy-queue.js";
-import { runHeavyJob } from "../util/run-heavy-job.js";
 import { safeEditReply } from "../util/safe-interaction.js";
 import { createStageProgress } from "../util/stage-progress.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
@@ -60,21 +63,16 @@ export async function handleRarityCommand(interaction) {
   progress.show(`Beep boop. Breaking down LT3 #${tokenId}…`);
 
   try {
+    // In-process (not forked): keeps the warm Chrome page so /rarity stays fast on the VM.
+    // Still goes through the gif heavy queue so we don't stack Chrome + GIF memory.
     await runGifJob(
       async () => {
         try {
-          const result = await runHeavyJob(
-            "rarity",
-            { tokenId },
-            {
-              timeoutMs: RARITY_TIMEOUT_MS + 30_000,
-              onProgress: (stage) => {
-                const step = typeof stage === "object" ? stage?.step : stage;
-                const base = STAGE_TEXT[step] || "Working";
-                progress.show(`Beep boop. LT3 #${tokenId}: ${base}…`);
-              },
-            }
-          );
+          const result = await buildRarityVideoWithTimeout(tokenId, (stage) => {
+            const step = typeof stage === "object" ? stage?.step : stage;
+            const base = STAGE_TEXT[step] || "Working";
+            progress.show(`Beep boop. LT3 #${tokenId}: ${base}…`);
+          });
           progress.stop();
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
           await safeEditReply(interaction, {
@@ -84,11 +82,7 @@ export async function handleRarityCommand(interaction) {
         } catch (err) {
           progress.stop();
           console.error("/rarity failed", err);
-          const message =
-            err instanceof Error && err.message
-              ? err.message
-              : "Something went wrong while building the breakdown.";
-          await safeEditReply(interaction, { content: message });
+          await safeEditReply(interaction, { content: friendlyRarityError(err) });
         }
       },
       {
@@ -105,7 +99,7 @@ export async function handleRarityCommand(interaction) {
   } catch (err) {
     console.error("/rarity job failed", err);
     await safeEditReply(interaction, {
-      content: "Something went wrong while building the breakdown.",
+      content: friendlyRarityError(err),
     });
   } finally {
     progress.stop();

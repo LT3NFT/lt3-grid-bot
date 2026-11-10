@@ -100,8 +100,8 @@ export const RARITY_PAGE_URL = String(
 /** Still-frame export size (same composition as the tool's Save PNG). */
 export const RARITY_WIDTH = Number(process.env.RARITY_WIDTH) || 1920;
 export const RARITY_HEIGHT = Number(process.env.RARITY_HEIGHT) || 1080;
-/** First Chrome paint on a free-tier VM can be slow; stills are much faster than video. */
-export const RARITY_TIMEOUT_MS = Number(process.env.RARITY_TIMEOUT_MS) || 180_000;
+/** Still export; warm page is ~seconds. Cold Chrome on a small VM needs headroom. */
+export const RARITY_TIMEOUT_MS = Number(process.env.RARITY_TIMEOUT_MS) || 240_000;
 
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 export const DISCORD_APPLICATION_ID = String(process.env.DISCORD_APPLICATION_ID || "").trim();

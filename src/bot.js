@@ -73,6 +73,12 @@ export function wireBot(client) {
     void startToolsReminderSchedule(readyClient).catch((err) => {
       console.error("[tools-reminder] could not start", err);
     });
+    // Pre-warm headless Chrome so the first /rarity is not a cold launch.
+    void import("./render/rarity-video.js")
+      .then((m) => m.warmRarityBrowser())
+      .catch((err) => {
+        console.warn("[rarity] pre-warm skipped:", err instanceof Error ? err.message : err);
+      });
   });
 
   client.on("shardDisconnect", (_event, shardId) => {
