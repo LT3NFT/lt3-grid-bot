@@ -60,12 +60,13 @@ lines = [ln for ln in text.splitlines() if not ln.startswith(drop)]
 lines += [
     "RARITY_WIDTH=1920",
     "RARITY_HEIGHT=1080",
-    "RARITY_TIMEOUT_MS=180000",
-    "TOOLS_REMINDER_INTERVAL_HOURS=36",
+    "RARITY_TIMEOUT_MS=90000",
+    # Recurring “what I can do” posts paused until slash commands are solid.
+    "TOOLS_REMINDER_INTERVAL_HOURS=0",
     "DISCORD_TOOLS_REMINDER_CHANNEL_NAME=main-chat",
 ]
 p.write_text("\n".join(lines).rstrip() + "\n")
-print("    set RARITY_* + tools reminder → #main-chat every 36h")
+print("    set RARITY_* ; tools reminder DISABLED (INTERVAL_HOURS=0)")
 PY
 
 echo "==> npm ci"

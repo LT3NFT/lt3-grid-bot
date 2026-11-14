@@ -51,6 +51,7 @@ export async function handleGifCommand(interaction) {
   const wallet = interaction.options.getString("wallet", true);
   const progress = createStageProgress(interaction);
   progress.show("Beep boop. Building your GIF…");
+  progress.heartbeat("Beep boop. Still building your GIF");
 
   try {
     await runGifJob(

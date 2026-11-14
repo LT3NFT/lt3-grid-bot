@@ -12,6 +12,9 @@ export function createStageProgress(interaction) {
   let lastAt = 0;
   let pending = null;
   let pendingTimer = null;
+  let heartbeatTimer = null;
+  let heartbeatBase = "";
+  let heartbeatN = 0;
 
   const flush = () => {
     pendingTimer = null;
@@ -29,11 +32,34 @@ export function createStageProgress(interaction) {
     else if (!pendingTimer) pendingTimer = setTimeout(flush, wait);
   };
 
+  const stopHeartbeat = () => {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  };
+
   return {
     show,
+    /**
+     * Re-edit every few seconds with a living status so long jobs don't look hung.
+     * @param {string} text
+     * @param {number} [everyMs]
+     */
+    heartbeat: (text, everyMs = 8_000) => {
+      if (stopped) return;
+      heartbeatBase = text;
+      stopHeartbeat();
+      heartbeatTimer = setInterval(() => {
+        if (stopped) return;
+        heartbeatN += 1;
+        const dots = ".".repeat((heartbeatN % 3) + 1);
+        show(`${heartbeatBase}${dots}`);
+      }, everyMs);
+      if (typeof heartbeatTimer.unref === "function") heartbeatTimer.unref();
+    },
     stop: () => {
       stopped = true;
       clearTimeout(pendingTimer);
+      stopHeartbeat();
     },
   };
 }

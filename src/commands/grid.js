@@ -51,6 +51,7 @@ export async function handleGridCommand(interaction) {
   const wallet = interaction.options.getString("wallet", true);
   const progress = createStageProgress(interaction);
   progress.show("Beep boop. Building your grid…");
+  progress.heartbeat("Beep boop. Still building your grid");
 
   try {
     await runGridJob(

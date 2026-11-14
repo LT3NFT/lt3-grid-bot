@@ -70,9 +70,13 @@ export function wireBot(client) {
       .catch((err) => {
         console.error("Failed to sync slash commands on startup", err);
       });
-    void startToolsReminderSchedule(readyClient).catch((err) => {
-      console.error("[tools-reminder] could not start", err);
-    });
+    void startToolsReminderSchedule(readyClient)
+      .then(() => {
+        /* no-op when TOOLS_REMINDER_INTERVAL_HOURS=0 (default) */
+      })
+      .catch((err) => {
+        console.error("[tools-reminder] could not start", err);
+      });
     // Pre-warm headless Chrome so the first /rarity is not a cold launch.
     void import("./render/rarity-video.js")
       .then((m) => m.warmRarityBrowser())

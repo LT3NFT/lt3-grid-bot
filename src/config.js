@@ -12,7 +12,7 @@ export const MAX_DISCORD_LONG_EDGE = 4096;
 export const MIN_DISCORD_LONG_EDGE = 2048;
 export const MAX_DISCORD_FILE_BYTES = 8 * 1024 * 1024;
 
-export const BOT_VERSION = "2026-11-09-v25";
+export const BOT_VERSION = "2026-11-14-v26";
 export const MAX_TOTAL_HEAVY_JOBS = Number(process.env.MAX_TOTAL_HEAVY_JOBS) || 2;
 export const MAX_CONCURRENT_GRID_JOBS = Number(process.env.MAX_CONCURRENT_GRID_JOBS) || 2;
 export const MAX_CONCURRENT_GIF_JOBS = Number(process.env.MAX_CONCURRENT_GIF_JOBS) || 1;
@@ -100,8 +100,8 @@ export const RARITY_PAGE_URL = String(
 /** Still-frame export size (same composition as the tool's Save PNG). */
 export const RARITY_WIDTH = Number(process.env.RARITY_WIDTH) || 1920;
 export const RARITY_HEIGHT = Number(process.env.RARITY_HEIGHT) || 1080;
-/** Still export; warm page is ~seconds. Cold Chrome on a small VM needs headroom. */
-export const RARITY_TIMEOUT_MS = Number(process.env.RARITY_TIMEOUT_MS) || 240_000;
+/** Discord still export. Warm page is ~2–8s; cold Chrome should fail by 90s, not hang forever. */
+export const RARITY_TIMEOUT_MS = Number(process.env.RARITY_TIMEOUT_MS) || 90_000;
 
 export const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 export const DISCORD_APPLICATION_ID = String(process.env.DISCORD_APPLICATION_ID || "").trim();

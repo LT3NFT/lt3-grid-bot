@@ -8,14 +8,15 @@ const CHANNEL_NAME = String(process.env.DISCORD_TOOLS_REMINDER_CHANNEL_NAME || "
   .trim()
   .toLowerCase();
 /**
- * Hours between posts. Default 36. Set TOOLS_REMINDER_INTERVAL_HOURS=0 to disable.
- * Fractional values work (e.g. 0.1 for testing).
+ * Hours between posts. Default 0 (disabled) — the recurring “what I can do”
+ * posts were noisy while slash commands were still unreliable.
+ * Set TOOLS_REMINDER_INTERVAL_HOURS=36 (or any >0) to re-enable later.
  */
 const INTERVAL_HOURS = (() => {
   const raw = process.env.TOOLS_REMINDER_INTERVAL_HOURS;
-  if (raw === undefined || raw === "") return 36;
+  if (raw === undefined || raw === "") return 0;
   const n = Number(raw);
-  return Number.isFinite(n) ? n : 36;
+  return Number.isFinite(n) ? n : 0;
 })();
 const STATE_FILE = path.resolve("data", "tools-reminder.json");
 
@@ -99,7 +100,10 @@ async function writeLastPostedAt(at) {
 
 /** Posts the tools reminder every TOOLS_REMINDER_INTERVAL_HOURS; survives restarts without double-posting. */
 export async function startToolsReminderSchedule(client) {
-  if (INTERVAL_HOURS <= 0) return;
+  if (INTERVAL_HOURS <= 0) {
+    console.log("[tools-reminder] disabled (TOOLS_REMINDER_INTERVAL_HOURS=0)");
+    return;
+  }
   const intervalMs = INTERVAL_HOURS * 60 * 60 * 1000;
 
   const tick = async () => {

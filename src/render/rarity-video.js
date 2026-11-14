@@ -18,24 +18,30 @@ let browserPromise = null;
 let warmPage = null;
 let warmPageLoadedAt = 0;
 let idleTimer = null;
+/** Serialize page open / reload so pre-warm and /rarity never race. */
+let pageGate = Promise.resolve();
 
 function getBrowser() {
   if (!browserPromise) {
+    const launchOpts = {
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--mute-audio",
+        "--disable-gpu",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-renderer-backgrounding",
+        "--js-flags=--max-old-space-size=512",
+      ],
+    };
+    const chromePath = String(process.env.PUPPETEER_EXECUTABLE_PATH || "").trim();
+    if (chromePath) launchOpts.executablePath = chromePath;
+
     browserPromise = puppeteer
-      .launch({
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-dev-shm-usage",
-          "--mute-audio",
-          "--disable-gpu",
-          "--disable-extensions",
-          "--disable-background-networking",
-          "--disable-background-timer-throttling",
-          "--disable-renderer-backgrounding",
-          "--js-flags=--max-old-space-size=512",
-        ],
-      })
+      .launch(launchOpts)
       .then((browser) => {
         browser.on("disconnected", () => {
           browserPromise = null;
@@ -72,23 +78,31 @@ function scheduleIdleClose() {
 
 /** One tool page stays open between requests so each /rarity skips launch + page load. */
 async function getToolPage() {
-  if (warmPage && !warmPage.isClosed() && Date.now() - warmPageLoadedAt < PAGE_MAX_AGE_MS) {
-    return { page: warmPage, warm: true };
-  }
-  if (warmPage && !warmPage.isClosed()) await warmPage.close().catch(() => {});
-  warmPage = null;
+  const run = pageGate.then(async () => {
+    if (warmPage && !warmPage.isClosed() && Date.now() - warmPageLoadedAt < PAGE_MAX_AGE_MS) {
+      return { page: warmPage, warm: true };
+    }
+    if (warmPage && !warmPage.isClosed()) await warmPage.close().catch(() => {});
+    warmPage = null;
 
-  const browser = await getBrowser();
-  const page = await browser.newPage();
-  await page.setViewport({ width: 960, height: 720, deviceScaleFactor: 1 });
-  page.setDefaultTimeout(120_000);
-  await page.goto(RARITY_PAGE_URL, { waitUntil: "domcontentloaded", timeout: 90_000 });
-  await page.waitForFunction(() => typeof load === "function" && typeof paint === "function", {
-    timeout: 60_000,
+    const browser = await getBrowser();
+    const page = await browser.newPage();
+    await page.setViewport({ width: 960, height: 720, deviceScaleFactor: 1 });
+    page.setDefaultTimeout(60_000);
+    console.log(`[rarity] loading tool page ${RARITY_PAGE_URL}`);
+    await page.goto(RARITY_PAGE_URL, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    await page.waitForFunction(() => typeof load === "function" && typeof paint === "function", {
+      timeout: 30_000,
+    });
+    warmPage = page;
+    warmPageLoadedAt = Date.now();
+    return { page, warm: false };
   });
-  warmPage = page;
-  warmPageLoadedAt = Date.now();
-  return { page, warm: false };
+  pageGate = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
 }
 
 /** Launch Chrome + tool page in the background so the first /rarity is not a cold start. */

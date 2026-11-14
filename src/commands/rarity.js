@@ -7,7 +7,7 @@ import {
 } from "../render/rarity-video.js";
 import { pickRarityMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
-import { runGifJob } from "../util/heavy-queue.js";
+import { runRarityExclusive } from "../util/rarity-lock.js";
 import { safeEditReply } from "../util/safe-interaction.js";
 import { createStageProgress } from "../util/stage-progress.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
@@ -61,19 +61,23 @@ export async function handleRarityCommand(interaction) {
 
   const progress = createStageProgress(interaction);
   progress.show(`Beep boop. Breaking down LT3 #${tokenId}…`);
+  // Keep the deferred reply alive so a slow cold Chrome start doesn't look frozen.
+  progress.heartbeat(`Beep boop. Still working on LT3 #${tokenId}…`);
 
   try {
-    // In-process (not forked): keeps the warm Chrome page so /rarity stays fast on the VM.
-    // Still goes through the gif heavy queue so we don't stack Chrome + GIF memory.
-    await runGifJob(
+    // Own lock — never sit behind a multi-minute /gif in the heavy queue.
+    await runRarityExclusive(
       async () => {
         try {
+          const t0 = Date.now();
           const result = await buildRarityVideoWithTimeout(tokenId, (stage) => {
             const step = typeof stage === "object" ? stage?.step : stage;
             const base = STAGE_TEXT[step] || "Working";
             progress.show(`Beep boop. LT3 #${tokenId}: ${base}…`);
           });
           progress.stop();
+          const secs = ((Date.now() - t0) / 1000).toFixed(1);
+          console.log(`[rarity] /rarity #${tokenId} delivered in ${secs}s`);
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
           await safeEditReply(interaction, {
             content: pickRarityMessage(result),
@@ -88,7 +92,7 @@ export async function handleRarityCommand(interaction) {
       {
         onQueued: (ahead) => {
           progress.show(
-            `Hang tight — ${ahead} other request${ahead === 1 ? "" : "s"} ahead of yours.`
+            `Hang tight — ${ahead} other rarity request${ahead === 1 ? "" : "s"} ahead of yours.`
           );
         },
         onStart: () => {
