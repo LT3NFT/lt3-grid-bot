@@ -1,13 +1,10 @@
 import { AttachmentBuilder, ApplicationCommandOptionType, MessageFlags } from "discord.js";
-import { DISCORD_GRID_CHANNEL_ID, GRID_COOLDOWN_MS } from "../config.js";
-import {
-  buildRarityVideoWithTimeout,
-  friendlyRarityError,
-  parseRarityTokenId,
-} from "../render/rarity-video.js";
+import { DISCORD_GRID_CHANNEL_ID, GRID_COOLDOWN_MS, RARITY_TIMEOUT_MS } from "../config.js";
+import { friendlyRarityError, parseRarityTokenId } from "../util/rarity-shared.js";
 import { pickRarityMessage } from "../util/bot-messages.js";
 import { checkCooldown } from "../util/cooldown.js";
 import { runRarityExclusive } from "../util/rarity-lock.js";
+import { runHeavyJob } from "../util/run-heavy-job.js";
 import { safeEditReply } from "../util/safe-interaction.js";
 import { createStageProgress } from "../util/stage-progress.js";
 import { publicSlashCommandDefaults } from "./public-defaults.js";
@@ -61,23 +58,30 @@ export async function handleRarityCommand(interaction) {
 
   const progress = createStageProgress(interaction);
   progress.show(`Beep boop. Breaking down LT3 #${tokenId}…`);
-  // Keep the deferred reply alive so a slow cold Chrome start doesn't look frozen.
-  progress.heartbeat(`Beep boop. Still working on LT3 #${tokenId}…`);
+  progress.heartbeat(`Beep boop. Still working on LT3 #${tokenId}`);
 
   try {
-    // Own lock — never sit behind a multi-minute /gif in the heavy queue.
+    // Own lock (never behind /gif) + forked Chrome (never OOMs the Discord process).
     await runRarityExclusive(
       async () => {
         try {
           const t0 = Date.now();
-          const result = await buildRarityVideoWithTimeout(tokenId, (stage) => {
-            const step = typeof stage === "object" ? stage?.step : stage;
-            const base = STAGE_TEXT[step] || "Working";
-            progress.show(`Beep boop. LT3 #${tokenId}: ${base}…`);
-          });
+          const result = await runHeavyJob(
+            "rarity",
+            { tokenId },
+            {
+              timeoutMs: RARITY_TIMEOUT_MS + 30_000,
+              onProgress: (stage) => {
+                const step = typeof stage === "object" ? stage?.step : stage;
+                const base = STAGE_TEXT[step] || "Working";
+                progress.show(`Beep boop. LT3 #${tokenId}: ${base}…`);
+              },
+            }
+          );
           progress.stop();
-          const secs = ((Date.now() - t0) / 1000).toFixed(1);
-          console.log(`[rarity] /rarity #${tokenId} delivered in ${secs}s`);
+          console.log(
+            `[rarity] /rarity #${tokenId} delivered in ${((Date.now() - t0) / 1000).toFixed(1)}s`
+          );
           const attachment = new AttachmentBuilder(result.buffer, { name: result.filename });
           await safeEditReply(interaction, {
             content: pickRarityMessage(result),

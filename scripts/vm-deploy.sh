@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Run ON the VM:
 #   curl -sL https://raw.githubusercontent.com/LT3NFT/lt3-grid-bot/main/scripts/vm-deploy.sh | bash
-# Fast code-only update (skip apt + rarity smoke test):
-#   curl -sL https://raw.githubusercontent.com/LT3NFT/lt3-grid-bot/main/scripts/vm-deploy.sh | SKIP_APT=1 SKIP_RARITY_CHECK=1 bash
+# Fast code-only update:
+#   curl -sL https://raw.githubusercontent.com/LT3NFT/lt3-grid-bot/main/scripts/vm-deploy.sh | SKIP_APT=1 bash
 set -euo pipefail
 export NEEDRESTART_MODE=a
 export DEBIAN_FRONTEND=noninteractive
@@ -10,7 +10,8 @@ export DEBIAN_FRONTEND=noninteractive
 APP="$HOME/lt3-grid-bot"
 ZIP_URL="https://github.com/LT3NFT/lt3-grid-bot/archive/refs/heads/main.zip"
 SKIP_APT="${SKIP_APT:-0}"
-SKIP_RARITY_CHECK="${SKIP_RARITY_CHECK:-0}"
+# Smoke test hangs often on 1GB VMs — skip by default. Set SKIP_RARITY_CHECK=0 to force.
+SKIP_RARITY_CHECK="${SKIP_RARITY_CHECK:-1}"
 
 if [ "$SKIP_APT" != "1" ]; then
   need_pkgs=()
@@ -55,32 +56,44 @@ drop = (
     "TOOLS_REMINDER_INTERVAL_HOURS=",
     "DISCORD_TOOLS_REMINDER_CHANNEL_NAME=",
     "DISCORD_HUDDLE_CHANNEL_NAME=",
+    "RARITY_PREWARM=",
 )
 lines = [ln for ln in text.splitlines() if not ln.startswith(drop)]
 lines += [
     "RARITY_WIDTH=1920",
     "RARITY_HEIGHT=1080",
     "RARITY_TIMEOUT_MS=90000",
-    # Recurring “what I can do” posts paused until slash commands are solid.
+    "RARITY_PREWARM=0",
+    # Recurring “what I can do” posts stay off.
     "TOOLS_REMINDER_INTERVAL_HOURS=0",
     "DISCORD_TOOLS_REMINDER_CHANNEL_NAME=main-chat",
 ]
 p.write_text("\n".join(lines).rstrip() + "\n")
-print("    set RARITY_* ; tools reminder DISABLED (INTERVAL_HOURS=0)")
+print("    set RARITY_* ; tools reminder DISABLED; no Chrome pre-warm")
 PY
 
 echo "==> npm ci"
 npm ci --no-audit --no-fund
 
+# Kill stranded Chrome from hung smoke tests / rarity jobs.
 pkill -f "scripts/check-rarity.js" 2>/dev/null || true
+pkill -f "chrom(e|ium)" 2>/dev/null || true
+sleep 1
+
 echo "==> VM size: $(nproc) CPU, $(free -m | awk '/Mem:/ {print $2 " MB RAM, " $7 " MB free"}')"
 
 smoke="skipped"
 if [ "$SKIP_RARITY_CHECK" = "1" ]; then
-  echo "==> Skipping /rarity smoke test (SKIP_RARITY_CHECK=1)"
+  echo "==> Skipping /rarity smoke test (default on small VMs)"
 else
-  echo "==> Rendering a test /rarity still"
-  if node scripts/check-rarity.js 4449; then
+  echo "==> Rendering a test /rarity still (60s cap)"
+  if command -v timeout >/dev/null 2>&1; then
+    if timeout 60s node scripts/check-rarity.js 4449; then
+      smoke="ok"
+    else
+      smoke="failed"
+    fi
+  elif node scripts/check-rarity.js 4449; then
     smoke="ok"
   else
     smoke="failed"
@@ -88,13 +101,22 @@ else
 fi
 
 echo "==> Restarting bot"
-pm2 restart lt3-grid-bot --update-env
-sleep 8
-pm2 logs lt3-grid-bot --lines 40 --nostream | grep -E "Logged in|Slash commands synced|Failed" || true
+mkdir -p logs
+# Prefer ecosystem so memory caps stay applied.
+if [ -f ecosystem.config.cjs ]; then
+  pm2 delete lt3-grid-bot 2>/dev/null || true
+  pm2 start ecosystem.config.cjs --update-env
+else
+  pm2 restart lt3-grid-bot --update-env || pm2 start src/index.js --name lt3-grid-bot --update-env
+fi
+pm2 save 2>/dev/null || true
+sleep 6
+pm2 ls
+pm2 logs lt3-grid-bot --lines 50 --nostream | grep -E "lt3-grid-bot |Logged in|Slash commands synced|tools-reminder|Failed|Error" || true
 
 if [ "$smoke" = "failed" ]; then
   echo "==> /rarity smoke test failed — bot still restarted. Paste logs if Discord /rarity fails."
   exit 1
 fi
 
-echo "==> Done. Try /gif wallet:animalvault.eth or /rarity token:4449."
+echo "==> Done. Reminders off. Try /rarity token:1 or /grid in Discord."

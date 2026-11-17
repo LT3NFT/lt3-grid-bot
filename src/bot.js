@@ -70,19 +70,13 @@ export function wireBot(client) {
       .catch((err) => {
         console.error("Failed to sync slash commands on startup", err);
       });
-    void startToolsReminderSchedule(readyClient)
-      .then(() => {
-        /* no-op when TOOLS_REMINDER_INTERVAL_HOURS=0 (default) */
-      })
-      .catch((err) => {
-        console.error("[tools-reminder] could not start", err);
-      });
-    // Pre-warm headless Chrome so the first /rarity is not a cold launch.
-    void import("./render/rarity-video.js")
-      .then((m) => m.warmRarityBrowser())
-      .catch((err) => {
-        console.warn("[rarity] pre-warm skipped:", err instanceof Error ? err.message : err);
-      });
+    // Reminder posts stay off unless TOOLS_REMINDER_INTERVAL_HOURS > 0.
+    void startToolsReminderSchedule(readyClient).catch((err) => {
+      console.error("[tools-reminder] could not start", err);
+    });
+    // Do NOT pre-warm Chrome in the Discord process — on a ~1GB VM it OOMs
+    // (pm2 max_memory_restart) and the bot stops answering slash commands.
+    // /rarity launches Chrome in a forked child instead.
   });
 
   client.on("shardDisconnect", (_event, shardId) => {
